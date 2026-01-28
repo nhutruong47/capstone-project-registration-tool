@@ -1,0 +1,35 @@
+services:
+  backend:
+    build: .
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:sqlserver://db:1433;databaseName=capstone_db;encrypt=true;trustServerCertificate=true
+      - SPRING_DATASOURCE_USERNAME=sa
+      - SPRING_DATASOURCE_PASSWORD=huydiet@SWD9999
+    networks:
+      - capstone-network
+    restart: always
+
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=huydiet@SWD9999
+      - MSSQL_PID=Express
+    ports:
+      - "1433:1433"
+    networks:
+      - capstone-network
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    restart: always
+
+networks:
+  capstone-network:
+    driver: bridge
+
+volumes:
+  sqlserver_data:
