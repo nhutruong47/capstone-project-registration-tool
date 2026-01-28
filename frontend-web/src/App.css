@@ -1,0 +1,103 @@
+/* Container chính bao phủ toàn màn hình */
+.app-container {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+
+/* Thẻ Card trung tâm */
+.glass-card {
+  background: rgba(255, 255, 255, 0.98);
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  width: 380px;
+}
+
+.header {
+  color: #1f2937;
+  margin-bottom: 25px;
+  font-size: 26px;
+  font-weight: 700;
+}
+
+/* Cấu trúc Input */
+.input-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+.input-field {
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  font-size: 16px;
+  transition: all 0.3s ease;
+}
+
+.input-field:focus {
+  border-color: #3b82f6;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Nút bấm */
+.login-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: none;
+  background-color: #2563eb;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.login-btn:hover {
+  background-color: #1d4ed8;
+}
+
+.logout-btn {
+  margin-top: 20px;
+  padding: 10px 30px;
+  border-radius: 30px;
+  border: 2px solid #ef4444;
+  background: transparent;
+  color: #ef4444;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Avatar hiển thị sau khi đăng nhập */
+.user-avatar {
+  width: 80px;
+  height: 80px;
+  background-color: #3b82f6;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 32px;
+  margin: 0 auto 20px auto;
+  font-weight: bold;
+}
+
+.error-msg {
+  color: #dc2626;
+  margin-top: 15px;
+  font-size: 14px;
+}
