@@ -5,6 +5,8 @@ import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "semesters")
@@ -30,15 +32,13 @@ public class Semester {
     @Column(nullable = false)
     private LocalDate endDate;
 
-    private LocalDateTime topicSubmissionOpen; // Thời gian mở nộp đề tài
-    private LocalDateTime topicSubmissionClose; // Thời gian đóng nộp đề tài
-
-    private LocalDateTime registrationOpen; // Thời gian mở đăng ký
-    private LocalDateTime registrationClose; // Thời gian đóng đăng ký
-
     @Builder.Default
     @Column(nullable = false)
     private Boolean isActive = false;
+
+    @OneToMany(mappedBy = "semester", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<RegistrationPhase> registrationPhases = new ArrayList<>();
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

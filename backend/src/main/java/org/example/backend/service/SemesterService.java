@@ -7,7 +7,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -62,22 +61,6 @@ public class SemesterService {
         Semester semester = semesterRepository.findById(semesterId)
                 .orElseThrow(() -> new RuntimeException("Semester not found"));
         semester.setIsActive(true);
-        return semesterRepository.save(semester);
-    }
-
-    public Semester updateRegistrationPeriod(Long semesterId, LocalDateTime open, LocalDateTime close) {
-        Semester semester = semesterRepository.findById(semesterId)
-                .orElseThrow(() -> new RuntimeException("Semester not found"));
-        semester.setRegistrationOpen(open);
-        semester.setRegistrationClose(close);
-        return semesterRepository.save(semester);
-    }
-
-    public Semester updateTopicSubmissionPeriod(Long semesterId, LocalDateTime open, LocalDateTime close) {
-        Semester semester = semesterRepository.findById(semesterId)
-                .orElseThrow(() -> new RuntimeException("Semester not found"));
-        semester.setTopicSubmissionOpen(open);
-        semester.setTopicSubmissionClose(close);
         return semesterRepository.save(semester);
     }
 

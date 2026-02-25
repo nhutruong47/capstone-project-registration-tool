@@ -1,5 +1,6 @@
 package org.example.backend.repository;
 
+import org.example.backend.entity.RegistrationPhase;
 import org.example.backend.entity.Topic;
 import org.example.backend.entity.User;
 import org.example.backend.entity.Semester;
@@ -29,13 +30,11 @@ public interface TopicRepository extends JpaRepository<Topic, Long> {
 
     List<Topic> findBySupervisorAndSemester(User supervisor, Semester semester);
 
-    @Query("SELECT t FROM Topic t WHERE t.status IN :statuses AND t.semester = :semester")
-    List<Topic> findByStatusesAndSemester(@Param("statuses") List<TopicStatus> statuses,
-            @Param("semester") Semester semester);
+    List<Topic> findByRegistrationPhase(RegistrationPhase registrationPhase);
 
     @Query("SELECT COUNT(t) FROM Topic t WHERE t.semester = :semester AND t.code LIKE :prefix%")
     Long countByCodePrefix(@Param("semester") Semester semester, @Param("prefix") String prefix);
 
-    @Query("SELECT t FROM Topic t WHERE t.status IN ('APPROVED', 'PUBLISHED') AND t.semester = :semester")
-    List<Topic> findAvailableForRegistration(@Param("semester") Semester semester);
+    @Query("SELECT t FROM Topic t WHERE t.status = 'PASS' AND t.semester = :semester")
+    List<Topic> findPassedTopicsBySemester(@Param("semester") Semester semester);
 }

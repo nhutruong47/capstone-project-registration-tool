@@ -7,7 +7,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -57,32 +56,6 @@ public class SemesterController {
     public ResponseEntity<?> activate(@PathVariable Long id) {
         try {
             Semester semester = semesterService.setActive(id);
-            return ResponseEntity.ok(semester);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    @PutMapping("/{id}/registration-period")
-    public ResponseEntity<?> updateRegistrationPeriod(@PathVariable Long id,
-            @RequestBody Map<String, String> request) {
-        try {
-            LocalDateTime open = LocalDateTime.parse(request.get("open"));
-            LocalDateTime close = LocalDateTime.parse(request.get("close"));
-            Semester semester = semesterService.updateRegistrationPeriod(id, open, close);
-            return ResponseEntity.ok(semester);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    @PutMapping("/{id}/topic-submission-period")
-    public ResponseEntity<?> updateTopicSubmissionPeriod(@PathVariable Long id,
-            @RequestBody Map<String, String> request) {
-        try {
-            LocalDateTime open = LocalDateTime.parse(request.get("open"));
-            LocalDateTime close = LocalDateTime.parse(request.get("close"));
-            Semester semester = semesterService.updateTopicSubmissionPeriod(id, open, close);
             return ResponseEntity.ok(semester);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

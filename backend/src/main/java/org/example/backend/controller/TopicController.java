@@ -25,34 +25,64 @@ public class TopicController {
     private final SemesterService semesterService;
     private final AIService aiService;
 
+    /**
+     * Giảng viên nộp đề tài mới
+     */
     @PostMapping
     public ResponseEntity<?> create(@RequestBody Map<String, Object> request) {
         try {
             Long supervisorId = Long.valueOf(request.get("supervisorId").toString());
             Long semesterId = Long.valueOf(request.get("semesterId").toString());
-            String titleEn = (String) request.get("titleEn");
-            String titleVi = (String) request.get("titleVi");
+            Long registrationPhaseId = Long.valueOf(request.get("registrationPhaseId").toString());
+            String title = (String) request.get("title");
             String description = (String) request.get("description");
-            String requirements = (String) request.get("requirements");
-            Integer maxTeams = request.get("maxTeams") != null
-                    ? Integer.valueOf(request.get("maxTeams").toString())
-                    : 1;
             String majorPrefix = (String) request.getOrDefault("majorPrefix", "SE");
 
             User supervisor = authService.findById(supervisorId)
                     .orElseThrow(() -> new RuntimeException("Supervisor not found"));
 
-            Topic topic = topicService.create(supervisor, semesterId, titleEn, titleVi,
-                    description, requirements, maxTeams, majorPrefix);
-            return ResponseEntity.ok(topic);
+            Topic topic = topicService.create(supervisor, semesterId, registrationPhaseId,
+                    title, description, majorPrefix);
+
+            // Trigger AI similarity check
+            aiService.checkSimilarityAsync(topic.getId());
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "Topic submitted. AI similarity check in progress.",
+                    "topic", topic));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Nộp lại đề tài FAIL ở đợt 2
+     */
+    @PostMapping("/{parentTopicId}/resubmit")
+    public ResponseEntity<?> resubmit(@PathVariable Long parentTopicId,
+            @RequestBody Map<String, Object> request) {
+        try {
+            Long newPhaseId = Long.valueOf(request.get("registrationPhaseId").toString());
+            String title = (String) request.get("title");
+            String description = (String) request.get("description");
+            String majorPrefix = (String) request.getOrDefault("majorPrefix", "SE");
+
+            Topic childTopic = topicService.resubmit(parentTopicId, newPhaseId, title, description, majorPrefix);
+
+            // Trigger AI similarity check for new version
+            aiService.checkSimilarityAsync(childTopic.getId());
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "Topic resubmitted successfully",
+                    "topic", childTopic));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
     @GetMapping
-    public ResponseEntity<List<Topic>> getAll() {
-        return ResponseEntity.ok(topicService.findByStatus(TopicStatus.PUBLISHED));
+    public ResponseEntity<?> getAll() {
+        return ResponseEntity.ok(topicService.findByStatus(TopicStatus.PASS));
     }
 
     @GetMapping("/{id}")
@@ -83,11 +113,14 @@ public class TopicController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @GetMapping("/available")
-    public ResponseEntity<?> getAvailableForRegistration() {
-        return semesterService.getActiveSemester()
-                .map(semester -> ResponseEntity.ok(topicService.findAvailableForRegistration(semester)))
-                .orElse(ResponseEntity.ok(List.of()));
+    /**
+     * Lấy danh sách đề tài PASS để công bố cho sinh viên
+     */
+    @GetMapping("/semester/{semesterId}/passed")
+    public ResponseEntity<?> getPassedTopics(@PathVariable Long semesterId) {
+        return semesterService.findById(semesterId)
+                .map(semester -> ResponseEntity.ok(topicService.findPassedTopicsBySemester(semester)))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/status/{status}")
@@ -95,57 +128,23 @@ public class TopicController {
         return ResponseEntity.ok(topicService.findByStatus(status));
     }
 
+    @GetMapping("/{id}/inheritance")
+    public ResponseEntity<?> getInheritanceHistory(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(topicService.getInheritanceHistory(id));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<?> update(@PathVariable Long id, @RequestBody Map<String, Object> request) {
         try {
-            String titleEn = (String) request.get("titleEn");
-            String titleVi = (String) request.get("titleVi");
+            String title = (String) request.get("title");
             String description = (String) request.get("description");
-            String requirements = (String) request.get("requirements");
-            Integer maxTeams = request.get("maxTeams") != null
-                    ? Integer.valueOf(request.get("maxTeams").toString())
-                    : null;
 
-            Topic topic = topicService.update(id, titleEn, titleVi, description, requirements, maxTeams);
+            Topic topic = topicService.update(id, title, description);
             return ResponseEntity.ok(topic);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    @PostMapping("/{id}/submit")
-    public ResponseEntity<?> submit(@PathVariable Long id) {
-        try {
-            Topic topic = topicService.submit(id);
-            // Trigger async AI processing
-            aiService.processTopicAsync(id);
-            return ResponseEntity.ok(Map.of(
-                    "message", "Topic submitted for AI processing",
-                    "topic", topic));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    @PostMapping("/{id}/publish")
-    public ResponseEntity<?> publish(@PathVariable Long id) {
-        try {
-            Topic topic = topicService.updateStatus(id, TopicStatus.PUBLISHED);
-            return ResponseEntity.ok(topic);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    @PostMapping("/{id}/resubmit")
-    public ResponseEntity<?> resubmit(@PathVariable Long id) {
-        try {
-            Topic topic = topicService.incrementVersion(id);
-            // Trigger async AI processing for new version
-            aiService.processTopicAsync(id);
-            return ResponseEntity.ok(Map.of(
-                    "message", "Topic resubmitted for AI processing (Version " + topic.getVersion() + ")",
-                    "topic", topic));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }

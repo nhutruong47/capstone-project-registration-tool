@@ -3,14 +3,16 @@ package org.example.backend.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.backend.entity.Topic;
+import org.example.backend.repository.TopicRepository;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * AI Service for OpenAI integration
- * Handles topic compliance check and similarity check
+ * AI Service - Kiểm tra trùng lặp đề tài
+ * So sánh tiêu đề và mô tả với các đề tài đã có trong hệ thống
  */
 @Service
 @RequiredArgsConstructor
@@ -18,123 +20,100 @@ import java.util.concurrent.CompletableFuture;
 public class AIService {
 
     private final TopicService topicService;
-    private final ReviewService reviewService;
+    private final TopicRepository topicRepository;
 
     /**
-     * Asynchronously process topic with AI checks
+     * Kiểm tra trùng lặp đề tài bằng AI (async)
+     * Nếu độ tương đồng vượt ngưỡng 80% → cảnh báo giảng viên
      */
     @Async
-    public CompletableFuture<Topic> processTopicAsync(Long topicId) {
-        log.info("Starting AI processing for topic: {}", topicId);
+    public CompletableFuture<Topic> checkSimilarityAsync(Long topicId) {
+        log.info("Starting AI similarity check for topic: {}", topicId);
 
         try {
-            // AI Check 1: Compliance Check
-            ComplianceResult complianceResult = performComplianceCheck(topicId);
+            Topic topic = topicService.findById(topicId)
+                    .orElseThrow(() -> new RuntimeException("Topic not found"));
 
-            // AI Check 2: Similarity Check
-            SimilarityResult similarityResult = performSimilarityCheck(topicId);
+            SimilarityResult result = performSimilarityCheck(topic);
 
-            // Update topic with AI results
-            Topic updatedTopic = topicService.updateAIResults(
+            // Cập nhật kết quả AI
+            Topic updatedTopic = topicService.updateAISimilarity(
                     topicId,
-                    complianceResult.passed(),
-                    complianceResult.feedback(),
-                    similarityResult.score(),
-                    similarityResult.details());
+                    result.score(),
+                    result.details());
 
-            // If passed, assign reviewers
-            if (updatedTopic.getAiCompliancePass() &&
-                    (updatedTopic.getAiSimilarityScore() == null || updatedTopic.getAiSimilarityScore() < 80)) {
-                reviewService.assignReviewers(topicId, 2);
-            }
-
-            log.info("AI processing completed for topic: {}", topicId);
+            log.info("AI similarity check completed for topic: {}. Score: {}", topicId, result.score());
             return CompletableFuture.completedFuture(updatedTopic);
 
         } catch (Exception e) {
-            log.error("AI processing failed for topic: {}", topicId, e);
-            throw new RuntimeException("AI processing failed", e);
+            log.error("AI similarity check failed for topic: {}", topicId, e);
+            throw new RuntimeException("AI similarity check failed", e);
         }
     }
 
     /**
-     * AI Check 1: Compliance Check
-     * Validates topic format and content requirements
+     * So sánh tiêu đề và mô tả với các đề tài đã có
+     * TODO: Tích hợp OpenAI Embeddings để so sánh nâng cao
      */
-    private ComplianceResult performComplianceCheck(Long topicId) {
-        Topic topic = topicService.findById(topicId)
-                .orElseThrow(() -> new RuntimeException("Topic not found"));
+    private SimilarityResult performSimilarityCheck(Topic topic) {
+        List<Topic> allTopics = topicRepository.findBySemester(topic.getSemester());
 
-        StringBuilder feedback = new StringBuilder();
-        boolean passed = true;
+        double maxSimilarity = 0.0;
+        StringBuilder details = new StringBuilder();
 
-        // Check description length
-        if (topic.getDescription() == null || topic.getDescription().length() < 200) {
-            feedback.append("- Description must be at least 200 characters.\n");
-            passed = false;
-        } else if (topic.getDescription().length() > 2000) {
-            feedback.append("- Description should not exceed 2000 characters.\n");
-            passed = false;
+        for (Topic existingTopic : allTopics) {
+            if (existingTopic.getId().equals(topic.getId()))
+                continue;
+
+            // Simple similarity check dựa trên tiêu đề
+            double titleSimilarity = calculateSimpleSimilarity(
+                    topic.getTitle().toLowerCase(),
+                    existingTopic.getTitle().toLowerCase());
+
+            if (titleSimilarity > maxSimilarity) {
+                maxSimilarity = titleSimilarity;
+            }
+
+            if (titleSimilarity > 0.5) {
+                details.append(String.format("- Tương đồng %.0f%% với đề tài %s: %s\n",
+                        titleSimilarity * 100,
+                        existingTopic.getCode(),
+                        existingTopic.getTitle()));
+            }
         }
 
-        // Check requirements
-        if (topic.getRequirements() == null || topic.getRequirements().isEmpty()) {
-            feedback.append("- Technical requirements must be specified.\n");
-            passed = false;
+        if (details.isEmpty()) {
+            details.append("Không tìm thấy đề tài tương đồng trong hệ thống.");
         }
 
-        // Check titles
-        if (topic.getTitleEn() == null || topic.getTitleEn().length() < 10) {
-            feedback.append("- English title must be at least 10 characters.\n");
-            passed = false;
-        }
-
-        if (topic.getTitleVi() == null || topic.getTitleVi().length() < 10) {
-            feedback.append("- Vietnamese title must be at least 10 characters.\n");
-            passed = false;
-        }
-
-        if (passed) {
-            feedback.append("Topic meets all compliance requirements.");
-        }
-
-        // TODO: Integrate with OpenAI API for advanced content analysis
+        // TODO: Integrate with OpenAI Embeddings for advanced similarity
         // Example:
-        // String prompt = "Analyze the following capstone project proposal for clarity
-        // and feasibility: " + topic.getDescription();
-        // OpenAIResponse response = openAIClient.chat(prompt);
-
-        return new ComplianceResult(passed, feedback.toString());
-    }
-
-    /**
-     * AI Check 2: Similarity Check
-     * Compares topic with existing topics using embeddings
-     */
-    private SimilarityResult performSimilarityCheck(Long topicId) {
-        Topic topic = topicService.findById(topicId)
-                .orElseThrow(() -> new RuntimeException("Topic not found"));
-
-        // TODO: Implement actual similarity check using OpenAI Embeddings
-        // Example workflow:
-        // 1. Generate embedding for current topic description
-        // 2. Compare with stored embeddings of past topics
-        // 3. Find topics with similarity > threshold
-        //
         // List<Double> embedding =
         // openAIClient.createEmbedding(topic.getDescription());
         // List<SimilarTopic> similarities = vectorStore.findSimilar(embedding, 0.8);
 
-        // Placeholder implementation
-        log.debug("Checking similarity for topic: {}", topic.getCode());
-        double similarityScore = 0.0; // No similarity for now
-        String details = "No similar topics found in the database.";
-
-        return new SimilarityResult(similarityScore, details);
+        return new SimilarityResult(maxSimilarity * 100, details.toString());
     }
 
-    // Result records
-    private record ComplianceResult(boolean passed, String feedback) {
+    /**
+     * Simple Jaccard similarity cho tiêu đề (placeholder)
+     */
+    private double calculateSimpleSimilarity(String text1, String text2) {
+        String[] words1 = text1.split("\\s+");
+        String[] words2 = text2.split("\\s+");
+
+        java.util.Set<String> set1 = new java.util.HashSet<>(java.util.Arrays.asList(words1));
+        java.util.Set<String> set2 = new java.util.HashSet<>(java.util.Arrays.asList(words2));
+
+        java.util.Set<String> intersection = new java.util.HashSet<>(set1);
+        intersection.retainAll(set2);
+
+        java.util.Set<String> union = new java.util.HashSet<>(set1);
+        union.addAll(set2);
+
+        if (union.isEmpty())
+            return 0.0;
+        return (double) intersection.size() / union.size();
     }
 
     private record SimilarityResult(double score, String details) {

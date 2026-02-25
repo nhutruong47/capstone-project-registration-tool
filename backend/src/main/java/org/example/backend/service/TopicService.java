@@ -3,8 +3,10 @@ package org.example.backend.service;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.entity.*;
 import org.example.backend.enums.TopicStatus;
-import org.example.backend.repository.TopicRepository;
+import org.example.backend.repository.RegistrationPhaseRepository;
 import org.example.backend.repository.SemesterRepository;
+import org.example.backend.repository.TopicInheritanceRepository;
+import org.example.backend.repository.TopicRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +21,8 @@ public class TopicService {
 
     private final TopicRepository topicRepository;
     private final SemesterRepository semesterRepository;
+    private final RegistrationPhaseRepository registrationPhaseRepository;
+    private final TopicInheritanceRepository topicInheritanceRepository;
 
     /**
      * Generate unique topic code: [Semester]-[Major][Sequence]
@@ -29,27 +33,64 @@ public class TopicService {
         return String.format("%s-%s%03d", semester.getCode(), majorPrefix, count + 1);
     }
 
-    public Topic create(User supervisor, Long semesterId, String titleEn, String titleVi,
-            String description, String requirements, Integer maxTeams, String majorPrefix) {
+    /**
+     * Giảng viên tạo đề tài mới trong một đợt đăng ký
+     */
+    public Topic create(User supervisor, Long semesterId, Long registrationPhaseId,
+            String title, String description, String majorPrefix) {
         Semester semester = semesterRepository.findById(semesterId)
                 .orElseThrow(() -> new RuntimeException("Semester not found"));
+
+        RegistrationPhase phase = registrationPhaseRepository.findById(registrationPhaseId)
+                .orElseThrow(() -> new RuntimeException("Registration phase not found"));
 
         String code = generateTopicCode(semester, majorPrefix);
 
         Topic topic = Topic.builder()
                 .code(code)
-                .titleEn(titleEn)
-                .titleVi(titleVi)
+                .title(title)
                 .description(description)
-                .requirements(requirements)
-                .maxTeams(maxTeams != null ? maxTeams : 1)
                 .supervisor(supervisor)
                 .semester(semester)
-                .status(TopicStatus.DRAFT)
-                .version(1)
+                .registrationPhase(phase)
+                .status(TopicStatus.PENDING)
+                .submittedAt(LocalDateTime.now())
                 .build();
 
         return topicRepository.save(topic);
+    }
+
+    /**
+     * Nộp lại đề tài FAIL ở đợt 2 (tạo đề tài con kế thừa)
+     */
+    public Topic resubmit(Long parentTopicId, Long newPhaseId, String title, String description, String majorPrefix) {
+        Topic parentTopic = topicRepository.findById(parentTopicId)
+                .orElseThrow(() -> new RuntimeException("Parent topic not found"));
+
+        if (parentTopic.getStatus() != TopicStatus.FAIL) {
+            throw new RuntimeException("Only FAILED topics can be resubmitted");
+        }
+
+        RegistrationPhase newPhase = registrationPhaseRepository.findById(newPhaseId)
+                .orElseThrow(() -> new RuntimeException("Registration phase not found"));
+
+        // Tạo đề tài mới
+        Topic childTopic = create(
+                parentTopic.getSupervisor(),
+                parentTopic.getSemester().getId(),
+                newPhaseId,
+                title != null ? title : parentTopic.getTitle(),
+                description != null ? description : parentTopic.getDescription(),
+                majorPrefix);
+
+        // Tạo quan hệ kế thừa
+        TopicInheritance inheritance = TopicInheritance.builder()
+                .parentTopic(parentTopic)
+                .childTopic(childTopic)
+                .build();
+        topicInheritanceRepository.save(inheritance);
+
+        return childTopic;
     }
 
     public Optional<Topic> findById(Long id) {
@@ -72,77 +113,54 @@ public class TopicService {
         return topicRepository.findByStatus(status);
     }
 
-    public List<Topic> findAvailableForRegistration(Semester semester) {
-        return topicRepository.findAvailableForRegistration(semester);
+    public List<Topic> findByRegistrationPhase(RegistrationPhase phase) {
+        return topicRepository.findByRegistrationPhase(phase);
     }
 
-    public Topic update(Long topicId, String titleEn, String titleVi,
-            String description, String requirements, Integer maxTeams) {
+    /**
+     * Lấy danh sách đề tài PASS để công bố cho sinh viên
+     */
+    public List<Topic> findPassedTopicsBySemester(Semester semester) {
+        return topicRepository.findPassedTopicsBySemester(semester);
+    }
+
+    public Topic update(Long topicId, String title, String description) {
         Topic topic = topicRepository.findById(topicId)
                 .orElseThrow(() -> new RuntimeException("Topic not found"));
 
-        topic.setTitleEn(titleEn);
-        topic.setTitleVi(titleVi);
-        topic.setDescription(description);
-        topic.setRequirements(requirements);
-        if (maxTeams != null) {
-            topic.setMaxTeams(maxTeams);
-        }
+        if (title != null)
+            topic.setTitle(title);
+        if (description != null)
+            topic.setDescription(description);
 
-        return topicRepository.save(topic);
-    }
-
-    public Topic submit(Long topicId) {
-        Topic topic = topicRepository.findById(topicId)
-                .orElseThrow(() -> new RuntimeException("Topic not found"));
-
-        topic.setStatus(TopicStatus.PROCESSING);
-        topic.setSubmittedAt(LocalDateTime.now());
         return topicRepository.save(topic);
     }
 
     public Topic updateStatus(Long topicId, TopicStatus status) {
         Topic topic = topicRepository.findById(topicId)
                 .orElseThrow(() -> new RuntimeException("Topic not found"));
-
         topic.setStatus(status);
-
-        if (status == TopicStatus.APPROVED) {
-            topic.setApprovedAt(LocalDateTime.now());
-        } else if (status == TopicStatus.PUBLISHED) {
-            topic.setPublishedAt(LocalDateTime.now());
-        }
-
         return topicRepository.save(topic);
     }
 
-    public Topic updateAIResults(Long topicId, Boolean compliancePass, String complianceFeedback,
-            Double similarityScore, String similarityDetails) {
+    /**
+     * Cập nhật kết quả AI similarity
+     */
+    public Topic updateAISimilarity(Long topicId, Double similarityScore, String details) {
         Topic topic = topicRepository.findById(topicId)
                 .orElseThrow(() -> new RuntimeException("Topic not found"));
-
-        topic.setAiCompliancePass(compliancePass);
-        topic.setAiComplianceFeedback(complianceFeedback);
         topic.setAiSimilarityScore(similarityScore);
-        topic.setAiSimilarityDetails(similarityDetails);
-
-        // Determine status based on AI results
-        if (compliancePass && (similarityScore == null || similarityScore < 80)) {
-            topic.setStatus(TopicStatus.AI_PASSED);
-        } else {
-            topic.setStatus(TopicStatus.AI_FAILED);
-        }
-
+        topic.setAiSimilarityDetails(details);
         return topicRepository.save(topic);
     }
 
-    public Topic incrementVersion(Long topicId) {
+    /**
+     * Lấy lịch sử kế thừa của đề tài
+     */
+    public List<TopicInheritance> getInheritanceHistory(Long topicId) {
         Topic topic = topicRepository.findById(topicId)
                 .orElseThrow(() -> new RuntimeException("Topic not found"));
-
-        topic.setVersion(topic.getVersion() + 1);
-        topic.setStatus(TopicStatus.PROCESSING);
-        return topicRepository.save(topic);
+        return topicInheritanceRepository.findByParentTopic(topic);
     }
 
     public void delete(Long id) {
