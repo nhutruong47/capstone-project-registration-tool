@@ -67,8 +67,8 @@ public class AIService {
 
             // Simple similarity check dựa trên tiêu đề
             double titleSimilarity = calculateSimpleSimilarity(
-                    topic.getTitle().toLowerCase(),
-                    existingTopic.getTitle().toLowerCase());
+                    topic.getTitleEn().toLowerCase(),
+                    existingTopic.getTitleEn().toLowerCase());
 
             if (titleSimilarity > maxSimilarity) {
                 maxSimilarity = titleSimilarity;
@@ -78,7 +78,7 @@ public class AIService {
                 details.append(String.format("- Tương đồng %.0f%% với đề tài %s: %s\n",
                         titleSimilarity * 100,
                         existingTopic.getCode(),
-                        existingTopic.getTitle()));
+                        existingTopic.getTitleEn()));
             }
         }
 

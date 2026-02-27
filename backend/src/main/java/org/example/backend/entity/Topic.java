@@ -20,40 +20,57 @@ public class Topic {
     private Long id;
 
     @Column(nullable = false, unique = true)
-    private String code; // Mã đề tài duy nhất trong học kỳ, VD: SP26-SE005
+    private String code; // Mã đề tài: FA25SE001, SP26-SE005
 
     @Column(nullable = false)
-    private String title; // Tên đề tài
+    private String titleEn; // Tên đề tài tiếng Anh (hoặc Nhật)
+
+    private String titleVi; // Tên đề tài tiếng Việt
 
     @Column(columnDefinition = "TEXT")
     private String description; // Mô tả chi tiết
 
+    private String department; // Bộ môn (SE, IS, IA...)
+
     @Column(columnDefinition = "TEXT")
-    private String studentGroupInfo; // Thông tin nhóm sinh viên (JSON: tên, MSSV, email)
+    private String studentGroupInfo; // Thông tin nhóm sinh viên (JSON)
+
+    private Integer studentCount; // Số lượng sinh viên
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
     private TopicStatus status = TopicStatus.PENDING;
 
-    private Integer totalScore; // Điểm tổng cuối cùng
+    private Integer totalScore; // Điểm tổng cuối cùng (Final Score)
 
     @Column(columnDefinition = "TEXT")
     private String finalNote; // Ghi chú cuối cùng
 
     @Builder.Default
     @Column(nullable = false)
+    private Boolean conflict = false; // Có mâu thuẫn giữa reviewer không
+
+    @Builder.Default
+    @Column(nullable = false)
     private Boolean isLocked = false; // Moderator khóa kết quả
 
     // AI Similarity Check
-    private Double aiSimilarityScore; // Điểm tương đồng từ AI
+    private Double aiSimilarityScore;
     @Column(columnDefinition = "TEXT")
-    private String aiSimilarityDetails; // Chi tiết kết quả kiểm tra trùng
+    private String aiSimilarityDetails;
+
+    // === Quan hệ ===
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "supervisor_id", nullable = false)
     @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
-    private User supervisor; // Giảng viên nộp đề tài
+    private User supervisor; // GVHD chính
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "supervisor2_id")
+    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
+    private User supervisor2; // GVHD phụ (nếu có)
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "semester_id", nullable = false)
@@ -63,31 +80,30 @@ public class Topic {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "registration_phase_id", nullable = false)
     @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler", "semester" })
-    private RegistrationPhase registrationPhase; // Đợt đăng ký
+    private RegistrationPhase registrationPhase;
 
-    // Quan hệ kế thừa đề tài (Đợt 2 nộp lại)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_topic_id")
     @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
-    private Topic parentTopic; // Đề tài cha (null nếu là đề tài gốc)
+    private Topic parentTopic; // Đề tài cha (nếu nộp lại đợt 2)
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
 
-    private LocalDateTime submittedAt; // Ngày nộp
+    private LocalDateTime submittedAt;
 
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
-        if (status == null) {
+        if (status == null)
             status = TopicStatus.PENDING;
-        }
-        if (isLocked == null) {
+        if (isLocked == null)
             isLocked = false;
-        }
+        if (conflict == null)
+            conflict = false;
     }
 
     @PreUpdate

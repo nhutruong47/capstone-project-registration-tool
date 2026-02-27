@@ -34,16 +34,24 @@ public class TopicController {
             Long supervisorId = Long.valueOf(request.get("supervisorId").toString());
             Long semesterId = Long.valueOf(request.get("semesterId").toString());
             Long registrationPhaseId = Long.valueOf(request.get("registrationPhaseId").toString());
-            String title = (String) request.get("title");
+            String titleEn = (String) request.get("titleEn");
+            String titleVi = (String) request.get("titleVi");
             String description = (String) request.get("description");
-            String majorPrefix = (String) request.getOrDefault("majorPrefix", "SE");
+            String department = (String) request.getOrDefault("department", "SE");
             String studentGroupInfo = (String) request.get("studentGroupInfo");
+            Integer studentCount = request.get("studentCount") != null
+                    ? Integer.valueOf(request.get("studentCount").toString())
+                    : null;
+            Long supervisor2Id = request.get("supervisor2Id") != null
+                    ? Long.valueOf(request.get("supervisor2Id").toString())
+                    : null;
 
             User supervisor = authService.findById(supervisorId)
                     .orElseThrow(() -> new RuntimeException("Supervisor not found"));
 
             Topic topic = topicService.create(supervisor, semesterId, registrationPhaseId,
-                    title, description, majorPrefix, studentGroupInfo);
+                    titleEn, titleVi, description, department,
+                    studentGroupInfo, studentCount, supervisor2Id);
 
             // Trigger AI similarity check
             aiService.checkSimilarityAsync(topic.getId());
@@ -64,15 +72,15 @@ public class TopicController {
             @RequestBody Map<String, Object> request) {
         try {
             Long newPhaseId = Long.valueOf(request.get("registrationPhaseId").toString());
-            String title = (String) request.get("title");
+            String titleEn = (String) request.get("titleEn");
+            String titleVi = (String) request.get("titleVi");
             String description = (String) request.get("description");
-            String majorPrefix = (String) request.getOrDefault("majorPrefix", "SE");
+            String department = (String) request.get("department");
             String studentGroupInfo = (String) request.get("studentGroupInfo");
 
-            Topic childTopic = topicService.resubmit(parentTopicId, newPhaseId, title, description,
-                    majorPrefix, studentGroupInfo);
+            Topic childTopic = topicService.resubmit(parentTopicId, newPhaseId, titleEn, titleVi,
+                    description, department, studentGroupInfo);
 
-            // Trigger AI similarity check for new version
             aiService.checkSimilarityAsync(childTopic.getId());
 
             return ResponseEntity.ok(Map.of(
@@ -98,9 +106,6 @@ public class TopicController {
         }
     }
 
-    /**
-     * Lấy tất cả đề tài
-     */
     @GetMapping
     public ResponseEntity<?> getAll() {
         return ResponseEntity.ok(topicService.findAll());
@@ -134,9 +139,6 @@ public class TopicController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    /**
-     * Lấy danh sách đề tài PASS để công bố cho sinh viên
-     */
     @GetMapping("/semester/{semesterId}/passed")
     public ResponseEntity<?> getPassedTopics(@PathVariable Long semesterId) {
         return semesterService.findById(semesterId)
@@ -161,11 +163,12 @@ public class TopicController {
     @PutMapping("/{id}")
     public ResponseEntity<?> update(@PathVariable Long id, @RequestBody Map<String, Object> request) {
         try {
-            String title = (String) request.get("title");
+            String titleEn = (String) request.get("titleEn");
+            String titleVi = (String) request.get("titleVi");
             String description = (String) request.get("description");
             String studentGroupInfo = (String) request.get("studentGroupInfo");
 
-            Topic topic = topicService.update(id, title, description, studentGroupInfo);
+            Topic topic = topicService.update(id, titleEn, titleVi, description, studentGroupInfo);
             return ResponseEntity.ok(topic);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

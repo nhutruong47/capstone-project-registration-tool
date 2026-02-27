@@ -29,21 +29,21 @@ public class DataInitializer {
 
                         System.out.println("Initializing Database with Seed Data...");
 
-                        // 1. Create Active Semester
+                        // 1. Semester
                         Semester semester = Semester.builder()
-                                        .code("SP26")
-                                        .name("Spring 2026")
-                                        .startDate(LocalDate.of(2026, 1, 1))
-                                        .endDate(LocalDate.of(2026, 4, 30))
+                                        .code("FA25")
+                                        .name("Fall 2025")
+                                        .startDate(LocalDate.of(2025, 9, 1))
+                                        .endDate(LocalDate.of(2025, 12, 31))
                                         .isActive(true)
                                         .build();
                         semesterRepository.save(semester);
 
-                        // 2. Create Registration Phases
+                        // 2. Registration Phases
                         RegistrationPhase phase1 = RegistrationPhase.builder()
                                         .name("Đợt 1")
-                                        .startDate(LocalDateTime.of(2025, 11, 1, 0, 0))
-                                        .endDate(LocalDateTime.of(2025, 12, 1, 23, 59))
+                                        .startDate(LocalDateTime.of(2025, 9, 1, 0, 0))
+                                        .endDate(LocalDateTime.of(2025, 10, 1, 23, 59))
                                         .status(PhaseStatus.CLOSED)
                                         .semester(semester)
                                         .build();
@@ -51,157 +51,157 @@ public class DataInitializer {
 
                         RegistrationPhase phase2 = RegistrationPhase.builder()
                                         .name("Đợt 2")
-                                        .startDate(LocalDateTime.of(2025, 12, 10, 0, 0))
-                                        .endDate(LocalDateTime.of(2025, 12, 31, 23, 59))
+                                        .startDate(LocalDateTime.of(2025, 10, 15, 0, 0))
+                                        .endDate(LocalDateTime.of(2025, 11, 15, 23, 59))
                                         .status(PhaseStatus.OPEN)
                                         .semester(semester)
                                         .build();
                         registrationPhaseRepository.save(phase2);
 
-                        // 3. Create Users
-                        User admin = User.builder()
-                                        .email("admin@fpt.edu.vn")
-                                        .password("12345")
-                                        .fullName("System Administrator")
-                                        .role(UserRole.ADMIN)
-                                        .phone("0987654321")
-                                        .build();
-                        userRepository.save(admin);
+                        // 3. Users
+                        userRepository.save(User.builder()
+                                        .email("admin@fpt.edu.vn").password("12345")
+                                        .fullName("System Administrator").role(UserRole.ADMIN)
+                                        .phone("0987654321").build());
 
                         User lecturer1 = User.builder()
-                                        .email("thanhnh@fpt.edu.vn")
-                                        .password("12345")
-                                        .fullName("Nguyen Huu Thanh")
-                                        .role(UserRole.LECTURER)
-                                        .department("Software Engineering")
-                                        .phone("0912345678")
-                                        .build();
+                                        .email("thanhnh@fpt.edu.vn").password("12345")
+                                        .fullName("Nguyen Huu Thanh").role(UserRole.LECTURER)
+                                        .department("Software Engineering").phone("0912345678").build();
                         userRepository.save(lecturer1);
 
                         User lecturer2 = User.builder()
-                                        .email("tungtt@fpt.edu.vn")
-                                        .password("12345")
-                                        .fullName("Tran Thanh Tung")
-                                        .role(UserRole.LECTURER)
-                                        .department("Information Systems")
-                                        .phone("0909090909")
-                                        .build();
+                                        .email("tungtt@fpt.edu.vn").password("12345")
+                                        .fullName("Tran Thanh Tung").role(UserRole.LECTURER)
+                                        .department("Information Systems").phone("0909090909").build();
                         userRepository.save(lecturer2);
 
                         User lecturer3 = User.builder()
-                                        .email("minhpt@fpt.edu.vn")
-                                        .password("12345")
-                                        .fullName("Phan Thanh Minh")
-                                        .role(UserRole.LECTURER)
-                                        .department("Software Engineering")
-                                        .phone("0901234567")
-                                        .build();
+                                        .email("minhpt@fpt.edu.vn").password("12345")
+                                        .fullName("Phan Thanh Minh").role(UserRole.LECTURER)
+                                        .department("Software Engineering").phone("0901234567").build();
                         userRepository.save(lecturer3);
 
+                        User lecturer4 = User.builder()
+                                        .email("huyennt@fpt.edu.vn").password("12345")
+                                        .fullName("Nguyen Thi Huyen").role(UserRole.LECTURER)
+                                        .department("Information Assurance").phone("0907654321").build();
+                        userRepository.save(lecturer4);
+
                         User moderator = User.builder()
-                                        .email("hoaiphuong@fpt.edu.vn")
-                                        .password("12345")
-                                        .fullName("Le Hoai Phuong")
-                                        .role(UserRole.MODERATOR)
-                                        .department("Computer Science")
-                                        .phone("0988888888")
-                                        .build();
+                                        .email("hoaiphuong@fpt.edu.vn").password("12345")
+                                        .fullName("Le Hoai Phuong").role(UserRole.MODERATOR)
+                                        .department("Computer Science").phone("0988888888").build();
                         userRepository.save(moderator);
 
-                        User student1 = User.builder()
-                                        .email("hieunm@fpt.edu.vn")
-                                        .password("12345")
-                                        .fullName("Nguyen Minh Hieu")
-                                        .role(UserRole.STUDENT)
-                                        .studentCode("SE17001")
-                                        .build();
-                        userRepository.save(student1);
+                        userRepository.save(User.builder()
+                                        .email("hieunm@fpt.edu.vn").password("12345")
+                                        .fullName("Nguyen Minh Hieu").role(UserRole.STUDENT)
+                                        .studentCode("SE17001").build());
 
-                        User student2 = User.builder()
-                                        .email("longdh@fpt.edu.vn")
-                                        .password("12345")
-                                        .fullName("Duong Hoang Long")
-                                        .role(UserRole.STUDENT)
-                                        .studentCode("SE17002")
-                                        .build();
-                        userRepository.save(student2);
+                        userRepository.save(User.builder()
+                                        .email("longdh@fpt.edu.vn").password("12345")
+                                        .fullName("Duong Hoang Long").role(UserRole.STUDENT)
+                                        .studentCode("SE17002").build());
 
-                        // 4. Create Checklist Templates (5 tiêu chí chấm)
+                        // 4. Checklist Templates (10 tiêu chí từ Excel mẫu)
                         checklistTemplateRepository.save(ChecklistTemplate.builder()
-                                        .name("Tính thực tiễn")
-                                        .description("Đề tài có tính ứng dụng thực tế, giải quyết vấn đề cụ thể")
-                                        .displayOrder(1)
-                                        .build());
+                                        .name("Tên đề tài phản ánh đúng định hướng")
+                                        .description("Tên đề tài có phản ánh đúng nội dung và định hướng nghiên cứu không")
+                                        .displayOrder(1).build());
 
                         checklistTemplateRepository.save(ChecklistTemplate.builder()
-                                        .name("Tính khả thi")
-                                        .description("Đề tài có thể hoàn thành trong thời gian quy định với nguồn lực hiện có")
-                                        .displayOrder(2)
-                                        .build());
+                                        .name("Ngữ cảnh sản phẩm (Product Context)")
+                                        .description("Bối cảnh và môi trường sử dụng sản phẩm có được mô tả rõ ràng không")
+                                        .displayOrder(2).build());
 
                         checklistTemplateRepository.save(ChecklistTemplate.builder()
-                                        .name("Tính mới")
-                                        .description("Đề tài có yếu tố sáng tạo, không trùng lặp với các đề tài trước")
-                                        .displayOrder(3)
-                                        .build());
+                                        .name("Problem Statement")
+                                        .description("Vấn đề cần giải quyết có được trình bày rõ ràng không")
+                                        .displayOrder(3).build());
 
                         checklistTemplateRepository.save(ChecklistTemplate.builder()
-                                        .name("Yêu cầu kỹ thuật")
-                                        .description("Đề tài có yêu cầu kỹ thuật rõ ràng, phù hợp với trình độ sinh viên")
-                                        .displayOrder(4)
-                                        .build());
+                                        .name("Main Actors")
+                                        .description("Các tác nhân chính (actors) của hệ thống có được xác định rõ không")
+                                        .displayOrder(4).build());
 
                         checklistTemplateRepository.save(ChecklistTemplate.builder()
-                                        .name("Mô tả đầy đủ")
-                                        .description("Mô tả đề tài rõ ràng, đầy đủ thông tin cần thiết")
-                                        .displayOrder(5)
-                                        .build());
+                                        .name("Main Flows")
+                                        .description("Các luồng xử lý chính của hệ thống có được mô tả không")
+                                        .displayOrder(5).build());
 
-                        // 5. Create Sample Topics
-                        Topic topic1 = Topic.builder()
-                                        .code("SP26-SE001")
-                                        .title("Smart Capstone Project Management System")
+                        checklistTemplateRepository.save(ChecklistTemplate.builder()
+                                        .name("Customers / Sponsors")
+                                        .description("Khách hàng hoặc nhà tài trợ có được xác định không")
+                                        .displayOrder(6).build());
+
+                        checklistTemplateRepository.save(ChecklistTemplate.builder()
+                                        .name("Approach / Applied Technology")
+                                        .description("Công nghệ áp dụng và phương pháp tiếp cận có phù hợp không")
+                                        .displayOrder(7).build());
+
+                        checklistTemplateRepository.save(ChecklistTemplate.builder()
+                                        .name("Scope phù hợp")
+                                        .description("Phạm vi đề tài có phù hợp với thời gian và nguồn lực không")
+                                        .displayOrder(8).build());
+
+                        checklistTemplateRepository.save(ChecklistTemplate.builder()
+                                        .name("Complexity phù hợp Capstone")
+                                        .description("Độ phức tạp có đủ mức độ cho đồ án tốt nghiệp không")
+                                        .displayOrder(9).build());
+
+                        checklistTemplateRepository.save(ChecklistTemplate.builder()
+                                        .name("Applicability & Feasibility")
+                                        .description("Tính ứng dụng và khả thi của đề tài")
+                                        .displayOrder(10).build());
+
+                        // 5. Sample Topics
+                        topicRepository.save(Topic.builder()
+                                        .code("FA25SE001")
+                                        .titleEn("Smart Capstone Project Management System")
+                                        .titleVi("Hệ thống quản lý đồ án tốt nghiệp thông minh")
                                         .description("A system to manage the entire lifecycle of capstone projects.")
-                                        .studentGroupInfo(
-                                                        "[{\"name\":\"Nguyen Minh Hieu\",\"code\":\"SE17001\"},{\"name\":\"Duong Hoang Long\",\"code\":\"SE17002\"}]")
+                                        .department("SE")
+                                        .studentGroupInfo("[{\"name\":\"Nguyen Minh Hieu\",\"code\":\"SE17001\"}]")
+                                        .studentCount(3)
                                         .supervisor(lecturer1)
                                         .semester(semester)
                                         .registrationPhase(phase1)
                                         .status(TopicStatus.PASS)
-                                        .totalScore(3)
+                                        .totalScore(7)
                                         .finalNote("R1 và R2 đồng ý: PASS")
                                         .submittedAt(LocalDateTime.now())
-                                        .build();
-                        topicRepository.save(topic1);
+                                        .build());
 
-                        Topic topic2 = Topic.builder()
-                                        .code("SP26-SE002")
-                                        .title("AI-Powered Resume Screener")
+                        topicRepository.save(Topic.builder()
+                                        .code("FA25SE002")
+                                        .titleEn("AI-Powered Resume Screener")
+                                        .titleVi("Hệ thống sàng lọc CV bằng AI")
                                         .description("Using NLP to analyze and rank resumes based on job descriptions.")
-                                        .studentGroupInfo("[{\"name\":\"Tran Van A\",\"code\":\"SE17003\"}]")
+                                        .department("SE")
+                                        .studentCount(2)
                                         .supervisor(lecturer1)
                                         .semester(semester)
                                         .registrationPhase(phase1)
                                         .status(TopicStatus.PENDING)
                                         .submittedAt(LocalDateTime.now())
-                                        .build();
-                        topicRepository.save(topic2);
+                                        .build());
 
-                        Topic topic3 = Topic.builder()
-                                        .code("SP26-SE003")
-                                        .title("E-Commerce Platform with AI Recommendations")
+                        topicRepository.save(Topic.builder()
+                                        .code("FA25SE003")
+                                        .titleEn("E-Commerce Platform with AI Recommendations")
+                                        .titleVi("Nền tảng thương mại điện tử với gợi ý AI")
                                         .description("Build a modern e-commerce platform with AI-powered product recommendations.")
-                                        .studentGroupInfo(
-                                                        "[{\"name\":\"Le Van B\",\"code\":\"SE17004\"},{\"name\":\"Pham Thi C\",\"code\":\"SE17005\"}]")
+                                        .department("SE")
+                                        .studentCount(4)
                                         .supervisor(lecturer2)
                                         .semester(semester)
                                         .registrationPhase(phase1)
                                         .status(TopicStatus.FAIL)
-                                        .totalScore(-2)
+                                        .totalScore(-3)
                                         .finalNote("R1 và R2 đồng ý: FAIL")
                                         .submittedAt(LocalDateTime.now())
-                                        .build();
-                        topicRepository.save(topic3);
+                                        .build());
 
                         System.out.println("Database Initialized Successfully!");
                 };

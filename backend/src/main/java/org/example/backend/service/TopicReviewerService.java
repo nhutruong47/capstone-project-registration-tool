@@ -73,7 +73,7 @@ public class TopicReviewerService {
             // Thông báo cho reviewer
             notificationService.create(reviewer,
                     "Đề tài cần đánh giá",
-                    "Bạn được phân công đánh giá đề tài: " + topic.getCode() + " - " + topic.getTitle(),
+                    "Bạn được phân công đánh giá đề tài: " + topic.getCode() + " - " + topic.getTitleEn(),
                     "/reviews/" + topicId);
         }
 
@@ -155,7 +155,7 @@ public class TopicReviewerService {
         // Thông báo
         notificationService.create(reviewer,
                 "Phân công đánh giá (Reviewer thứ 3)",
-                "Bạn được chỉ định là reviewer thứ 3 cho đề tài: " + topic.getCode() + " - " + topic.getTitle() +
+                "Bạn được chỉ định là reviewer thứ 3 cho đề tài: " + topic.getCode() + " - " + topic.getTitleEn() +
                         ". Kết quả đánh giá của bạn sẽ là quyết định cuối cùng.",
                 "/reviews/" + topicId);
 
