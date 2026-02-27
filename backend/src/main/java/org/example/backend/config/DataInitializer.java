@@ -117,7 +117,16 @@ public class DataInitializer {
                                         .build();
                         userRepository.save(student1);
 
-                        // 4. Create Checklist Templates
+                        User student2 = User.builder()
+                                        .email("longdh@fpt.edu.vn")
+                                        .password("12345")
+                                        .fullName("Duong Hoang Long")
+                                        .role(UserRole.STUDENT)
+                                        .studentCode("SE17002")
+                                        .build();
+                        userRepository.save(student2);
+
+                        // 4. Create Checklist Templates (5 tiêu chí chấm)
                         checklistTemplateRepository.save(ChecklistTemplate.builder()
                                         .name("Tính thực tiễn")
                                         .description("Đề tài có tính ứng dụng thực tế, giải quyết vấn đề cụ thể")
@@ -152,11 +161,15 @@ public class DataInitializer {
                         Topic topic1 = Topic.builder()
                                         .code("SP26-SE001")
                                         .title("Smart Capstone Project Management System")
-                                        .description("A system to manage the entire lifecycle of capstone projects, including topic proposal, team formation, and evaluation.")
+                                        .description("A system to manage the entire lifecycle of capstone projects.")
+                                        .studentGroupInfo(
+                                                        "[{\"name\":\"Nguyen Minh Hieu\",\"code\":\"SE17001\"},{\"name\":\"Duong Hoang Long\",\"code\":\"SE17002\"}]")
                                         .supervisor(lecturer1)
                                         .semester(semester)
                                         .registrationPhase(phase1)
                                         .status(TopicStatus.PASS)
+                                        .totalScore(3)
+                                        .finalNote("R1 và R2 đồng ý: PASS")
                                         .submittedAt(LocalDateTime.now())
                                         .build();
                         topicRepository.save(topic1);
@@ -164,7 +177,8 @@ public class DataInitializer {
                         Topic topic2 = Topic.builder()
                                         .code("SP26-SE002")
                                         .title("AI-Powered Resume Screener")
-                                        .description("Using NLP to analyze and rank resumes based on job descriptions. The system provides automated screening and transparency.")
+                                        .description("Using NLP to analyze and rank resumes based on job descriptions.")
+                                        .studentGroupInfo("[{\"name\":\"Tran Van A\",\"code\":\"SE17003\"}]")
                                         .supervisor(lecturer1)
                                         .semester(semester)
                                         .registrationPhase(phase1)
@@ -172,6 +186,22 @@ public class DataInitializer {
                                         .submittedAt(LocalDateTime.now())
                                         .build();
                         topicRepository.save(topic2);
+
+                        Topic topic3 = Topic.builder()
+                                        .code("SP26-SE003")
+                                        .title("E-Commerce Platform with AI Recommendations")
+                                        .description("Build a modern e-commerce platform with AI-powered product recommendations.")
+                                        .studentGroupInfo(
+                                                        "[{\"name\":\"Le Van B\",\"code\":\"SE17004\"},{\"name\":\"Pham Thi C\",\"code\":\"SE17005\"}]")
+                                        .supervisor(lecturer2)
+                                        .semester(semester)
+                                        .registrationPhase(phase1)
+                                        .status(TopicStatus.FAIL)
+                                        .totalScore(-2)
+                                        .finalNote("R1 và R2 đồng ý: FAIL")
+                                        .submittedAt(LocalDateTime.now())
+                                        .build();
+                        topicRepository.save(topic3);
 
                         System.out.println("Database Initialized Successfully!");
                 };

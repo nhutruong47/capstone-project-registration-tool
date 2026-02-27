@@ -27,41 +27,45 @@ public class TopicReviewerService {
     private final NotificationService notificationService;
 
     /**
-     * Moderator phân công reviewer cho đề tài
-     * Ít nhất 2 reviewer, reviewer không được là supervisor của đề tài
+     * Moderator phân công 2 reviewer cho đề tài
+     * Reviewer không được là supervisor của đề tài
      */
-    public List<TopicReviewer> assignReviewers(Long topicId, int numberOfReviewers) {
-        if (numberOfReviewers < 2) {
-            throw new RuntimeException("Minimum 2 reviewers required");
-        }
-
+    public List<TopicReviewer> assignReviewers(Long topicId, List<Long> reviewerIds) {
         Topic topic = topicRepository.findById(topicId)
                 .orElseThrow(() -> new RuntimeException("Topic not found"));
 
-        // Lấy tất cả giảng viên (trừ supervisor của đề tài)
-        List<User> availableLecturers = userRepository.findByRole(UserRole.LECTURER);
-        availableLecturers.removeIf(l -> l.getId().equals(topic.getSupervisor().getId()));
+        if (reviewerIds == null || reviewerIds.size() < 2) {
+            throw new RuntimeException("Minimum 2 reviewers required");
+        }
 
-        // Loại bỏ các reviewer đã được phân công
+        // Kiểm tra không assign supervisor làm reviewer
+        for (Long reviewerId : reviewerIds) {
+            if (reviewerId.equals(topic.getSupervisor().getId())) {
+                throw new RuntimeException("Supervisor cannot be assigned as reviewer for their own topic");
+            }
+        }
+
+        // Loại bỏ reviewer đã được phân công
         List<TopicReviewer> existingReviewers = topicReviewerRepository.findByTopic(topic);
         List<Long> existingReviewerIds = existingReviewers.stream()
                 .map(tr -> tr.getReviewer().getId())
                 .toList();
-        availableLecturers.removeIf(l -> existingReviewerIds.contains(l.getId()));
-
-        if (availableLecturers.size() < numberOfReviewers) {
-            throw new RuntimeException("Not enough lecturers available for review assignment");
-        }
-
-        // Shuffle và chọn reviewer
-        Collections.shuffle(availableLecturers);
-        List<User> selectedReviewers = availableLecturers.subList(0, numberOfReviewers);
 
         List<TopicReviewer> topicReviewers = new ArrayList<>();
-        for (User reviewer : selectedReviewers) {
+        int order = existingReviewers.size() + 1;
+
+        for (Long reviewerId : reviewerIds) {
+            if (existingReviewerIds.contains(reviewerId)) {
+                continue; // Đã assign rồi, bỏ qua
+            }
+
+            User reviewer = userRepository.findById(reviewerId)
+                    .orElseThrow(() -> new RuntimeException("Reviewer not found: " + reviewerId));
+
             TopicReviewer tr = TopicReviewer.builder()
                     .topic(topic)
                     .reviewer(reviewer)
+                    .reviewerOrder(order++)
                     .reviewStatus(ReviewStatus.NOT_STARTED)
                     .build();
             topicReviewers.add(topicReviewerRepository.save(tr));
@@ -81,6 +85,84 @@ public class TopicReviewerService {
     }
 
     /**
+     * Phân công tự động (random) 2 reviewer cho đề tài
+     */
+    public List<TopicReviewer> autoAssignReviewers(Long topicId, int numberOfReviewers) {
+        if (numberOfReviewers < 2) {
+            throw new RuntimeException("Minimum 2 reviewers required");
+        }
+
+        Topic topic = topicRepository.findById(topicId)
+                .orElseThrow(() -> new RuntimeException("Topic not found"));
+
+        // Lấy tất cả giảng viên (trừ supervisor)
+        List<User> availableLecturers = new ArrayList<>(userRepository.findByRole(UserRole.LECTURER));
+        availableLecturers.removeIf(l -> l.getId().equals(topic.getSupervisor().getId()));
+
+        // Loại bỏ reviewer đã phân công
+        List<TopicReviewer> existingReviewers = topicReviewerRepository.findByTopic(topic);
+        List<Long> existingIds = existingReviewers.stream()
+                .map(tr -> tr.getReviewer().getId())
+                .toList();
+        availableLecturers.removeIf(l -> existingIds.contains(l.getId()));
+
+        if (availableLecturers.size() < numberOfReviewers) {
+            throw new RuntimeException("Not enough lecturers available for review assignment");
+        }
+
+        Collections.shuffle(availableLecturers);
+        List<Long> selectedIds = availableLecturers.subList(0, numberOfReviewers).stream()
+                .map(User::getId)
+                .toList();
+
+        return assignReviewers(topicId, selectedIds);
+    }
+
+    /**
+     * Moderator chỉ định Reviewer thứ 3 khi R1 và R2 mâu thuẫn
+     */
+    public TopicReviewer assignThirdReviewer(Long topicId, Long reviewerId) {
+        Topic topic = topicRepository.findById(topicId)
+                .orElseThrow(() -> new RuntimeException("Topic not found"));
+
+        if (topic.getStatus() != TopicStatus.NEED_THIRD_REVIEWER) {
+            throw new RuntimeException("Topic does not need a third reviewer (status: " + topic.getStatus() + ")");
+        }
+
+        User reviewer = userRepository.findById(reviewerId)
+                .orElseThrow(() -> new RuntimeException("Reviewer not found"));
+
+        // Kiểm tra reviewer không trùng với supervisor hoặc reviewer hiện tại
+        if (reviewer.getId().equals(topic.getSupervisor().getId())) {
+            throw new RuntimeException("Supervisor cannot be a reviewer");
+        }
+
+        List<TopicReviewer> existingReviewers = topicReviewerRepository.findByTopic(topic);
+        for (TopicReviewer tr : existingReviewers) {
+            if (tr.getReviewer().getId().equals(reviewerId)) {
+                throw new RuntimeException("This reviewer is already assigned to this topic");
+            }
+        }
+
+        TopicReviewer thirdReviewer = TopicReviewer.builder()
+                .topic(topic)
+                .reviewer(reviewer)
+                .reviewerOrder(3)
+                .reviewStatus(ReviewStatus.NOT_STARTED)
+                .build();
+        thirdReviewer = topicReviewerRepository.save(thirdReviewer);
+
+        // Thông báo
+        notificationService.create(reviewer,
+                "Phân công đánh giá (Reviewer thứ 3)",
+                "Bạn được chỉ định là reviewer thứ 3 cho đề tài: " + topic.getCode() + " - " + topic.getTitle() +
+                        ". Kết quả đánh giá của bạn sẽ là quyết định cuối cùng.",
+                "/reviews/" + topicId);
+
+        return thirdReviewer;
+    }
+
+    /**
      * Reviewer nộp đánh giá checklist cho đề tài
      */
     public TopicReviewer submitReview(Long topicReviewerId, List<ChecklistResult> checklistResults, String comment) {
@@ -89,6 +171,11 @@ public class TopicReviewerService {
 
         if (comment == null || comment.trim().isEmpty()) {
             throw new RuntimeException("Comment is required");
+        }
+
+        // Kiểm tra topic chưa bị khóa
+        if (topicReviewer.getTopic().getIsLocked()) {
+            throw new RuntimeException("Topic results are locked. Cannot submit review.");
         }
 
         // Lưu kết quả checklist
@@ -100,59 +187,102 @@ public class TopicReviewerService {
         // Tính tổng điểm
         Integer totalScore = checklistResultRepository.sumScoreByTopicReviewer(topicReviewer);
 
+        // Xác định decision dựa trên totalScore
+        TopicStatus decision;
+        if (totalScore > 0) {
+            decision = TopicStatus.PASS;
+        } else if (totalScore < 0) {
+            decision = TopicStatus.FAIL;
+        } else {
+            decision = TopicStatus.CONSIDER;
+        }
+
         topicReviewer.setTotalScore(totalScore);
+        topicReviewer.setDecision(decision);
         topicReviewer.setComment(comment);
         topicReviewer.setReviewStatus(ReviewStatus.COMPLETED);
         topicReviewer.setReviewedAt(LocalDateTime.now());
 
         TopicReviewer saved = topicReviewerRepository.save(topicReviewer);
 
-        // Kiểm tra xem tất cả reviewer đã đánh giá chưa
+        // Kiểm tra và quyết định trạng thái đề tài
         evaluateTopicStatus(topicReviewer.getTopic());
 
         return saved;
     }
 
     /**
-     * Đánh giá trạng thái cuối cùng của đề tài
-     * Tổng điểm > 0 → PASS
-     * Tổng điểm < 0 → FAIL
-     * Tổng điểm = 0 → CONSIDER
+     * Logic quyết định trạng thái đề tài:
+     * 1. Chờ tất cả reviewer (ít nhất 2) hoàn thành
+     * 2. Nếu R1 == R2 → kết quả cuối = kết quả đó
+     * 3. Nếu R1 ≠ R2 → NEED_THIRD_REVIEWER
+     * 4. Khi R3 chấm → kết quả R3 = quyết định cuối cùng
      */
     private void evaluateTopicStatus(Topic topic) {
-        Long totalReviewers = topicReviewerRepository.countByTopic(topic);
-        Long completedReviewers = topicReviewerRepository.countCompletedByTopic(topic);
+        List<TopicReviewer> allReviewers = topicReviewerRepository.findByTopic(topic);
+        List<TopicReviewer> completedReviewers = allReviewers.stream()
+                .filter(tr -> tr.getReviewStatus() == ReviewStatus.COMPLETED)
+                .toList();
 
-        // Chưa đủ số reviewer hoàn thành
-        if (completedReviewers < totalReviewers || totalReviewers < 2) {
+        // Tìm R1, R2, R3
+        TopicReviewer r1 = allReviewers.stream().filter(tr -> tr.getReviewerOrder() == 1).findFirst().orElse(null);
+        TopicReviewer r2 = allReviewers.stream().filter(tr -> tr.getReviewerOrder() == 2).findFirst().orElse(null);
+        TopicReviewer r3 = allReviewers.stream().filter(tr -> tr.getReviewerOrder() == 3).findFirst().orElse(null);
+
+        // Cần ít nhất R1 và R2 hoàn thành
+        if (r1 == null || r2 == null)
+            return;
+        if (r1.getReviewStatus() != ReviewStatus.COMPLETED || r2.getReviewStatus() != ReviewStatus.COMPLETED)
+            return;
+
+        // Trường hợp đã có R3
+        if (r3 != null && r3.getReviewStatus() == ReviewStatus.COMPLETED) {
+            // Kết quả R3 là quyết định cuối cùng
+            TopicStatus finalStatus = r3.getDecision();
+            topic.setStatus(finalStatus);
+            topic.setTotalScore(r3.getTotalScore());
+            topic.setFinalNote("Quyết định bởi Reviewer thứ 3: " + r3.getReviewer().getFullName());
+            topicRepository.save(topic);
+
+            notifyResult(topic, finalStatus);
             return;
         }
 
-        // Tính tổng điểm từ tất cả reviewer
-        List<TopicReviewer> reviewers = topicReviewerRepository.findByTopic(topic);
-        int overallScore = reviewers.stream()
-                .filter(tr -> tr.getTotalScore() != null)
-                .mapToInt(TopicReviewer::getTotalScore)
-                .sum();
+        // So sánh R1 và R2
+        if (r1.getDecision() == r2.getDecision()) {
+            // R1 == R2 → kết quả cuối
+            TopicStatus finalStatus = r1.getDecision();
+            int avgScore = (r1.getTotalScore() + r2.getTotalScore()) / 2;
+            topic.setStatus(finalStatus);
+            topic.setTotalScore(avgScore);
+            topic.setFinalNote("R1 và R2 đồng ý: " + finalStatus);
+            topicRepository.save(topic);
 
-        TopicStatus newStatus;
-        if (overallScore > 0) {
-            newStatus = TopicStatus.PASS;
-        } else if (overallScore < 0) {
-            newStatus = TopicStatus.FAIL;
+            notifyResult(topic, finalStatus);
         } else {
-            newStatus = TopicStatus.CONSIDER;
+            // R1 ≠ R2 → cần R3
+            topic.setStatus(TopicStatus.NEED_THIRD_REVIEWER);
+            topic.setFinalNote("Mâu thuẫn: R1=" + r1.getDecision() + ", R2=" + r2.getDecision() +
+                    ". Cần Reviewer thứ 3.");
+            topicRepository.save(topic);
+
+            // Thông báo cho supervisor
+            notificationService.create(topic.getSupervisor(),
+                    "Đề tài cần Reviewer thứ 3",
+                    "Đề tài " + topic.getCode() + " có kết quả mâu thuẫn giữa 2 reviewer. " +
+                            "Moderator sẽ chỉ định reviewer thứ 3.",
+                    "/topics/" + topic.getId());
         }
+    }
 
-        topic.setStatus(newStatus);
-        topicRepository.save(topic);
-
-        // Thông báo cho supervisor
+    private void notifyResult(Topic topic, TopicStatus finalStatus) {
         notificationService.create(topic.getSupervisor(),
                 "Kết quả đánh giá đề tài",
-                "Đề tài " + topic.getCode() + " đã được đánh giá. Kết quả: " + newStatus,
+                "Đề tài " + topic.getCode() + " đã được đánh giá. Kết quả: " + finalStatus,
                 "/topics/" + topic.getId());
     }
+
+    // === Query methods ===
 
     public List<TopicReviewer> findByTopic(Topic topic) {
         return topicReviewerRepository.findByTopic(topic);
@@ -168,5 +298,12 @@ public class TopicReviewerService {
 
     public java.util.Optional<TopicReviewer> findById(Long id) {
         return topicReviewerRepository.findById(id);
+    }
+
+    /**
+     * Lấy danh sách đề tài cần phân công Reviewer thứ 3
+     */
+    public List<Topic> findTopicsNeedingThirdReviewer() {
+        return topicRepository.findByStatus(TopicStatus.NEED_THIRD_REVIEWER);
     }
 }

@@ -37,7 +37,7 @@ public class TopicService {
      * Giảng viên tạo đề tài mới trong một đợt đăng ký
      */
     public Topic create(User supervisor, Long semesterId, Long registrationPhaseId,
-            String title, String description, String majorPrefix) {
+            String title, String description, String majorPrefix, String studentGroupInfo) {
         Semester semester = semesterRepository.findById(semesterId)
                 .orElseThrow(() -> new RuntimeException("Semester not found"));
 
@@ -50,6 +50,7 @@ public class TopicService {
                 .code(code)
                 .title(title)
                 .description(description)
+                .studentGroupInfo(studentGroupInfo)
                 .supervisor(supervisor)
                 .semester(semester)
                 .registrationPhase(phase)
@@ -63,7 +64,8 @@ public class TopicService {
     /**
      * Nộp lại đề tài FAIL ở đợt 2 (tạo đề tài con kế thừa)
      */
-    public Topic resubmit(Long parentTopicId, Long newPhaseId, String title, String description, String majorPrefix) {
+    public Topic resubmit(Long parentTopicId, Long newPhaseId, String title, String description,
+            String majorPrefix, String studentGroupInfo) {
         Topic parentTopic = topicRepository.findById(parentTopicId)
                 .orElseThrow(() -> new RuntimeException("Parent topic not found"));
 
@@ -74,16 +76,26 @@ public class TopicService {
         RegistrationPhase newPhase = registrationPhaseRepository.findById(newPhaseId)
                 .orElseThrow(() -> new RuntimeException("Registration phase not found"));
 
-        // Tạo đề tài mới
-        Topic childTopic = create(
-                parentTopic.getSupervisor(),
-                parentTopic.getSemester().getId(),
-                newPhaseId,
-                title != null ? title : parentTopic.getTitle(),
-                description != null ? description : parentTopic.getDescription(),
-                majorPrefix);
+        Semester semester = parentTopic.getSemester();
+        String code = generateTopicCode(semester, majorPrefix);
 
-        // Tạo quan hệ kế thừa
+        // Tạo đề tài mới với parentTopic
+        Topic childTopic = Topic.builder()
+                .code(code)
+                .title(title != null ? title : parentTopic.getTitle())
+                .description(description != null ? description : parentTopic.getDescription())
+                .studentGroupInfo(studentGroupInfo != null ? studentGroupInfo : parentTopic.getStudentGroupInfo())
+                .supervisor(parentTopic.getSupervisor())
+                .semester(semester)
+                .registrationPhase(newPhase)
+                .parentTopic(parentTopic)
+                .status(TopicStatus.PENDING)
+                .submittedAt(LocalDateTime.now())
+                .build();
+
+        childTopic = topicRepository.save(childTopic);
+
+        // Cũng lưu vào bảng TopicInheritance (backward compatibility)
         TopicInheritance inheritance = TopicInheritance.builder()
                 .parentTopic(parentTopic)
                 .childTopic(childTopic)
@@ -91,6 +103,28 @@ public class TopicService {
         topicInheritanceRepository.save(inheritance);
 
         return childTopic;
+    }
+
+    /**
+     * Moderator khóa kết quả đề tài
+     */
+    public Topic lockTopic(Long topicId) {
+        Topic topic = topicRepository.findById(topicId)
+                .orElseThrow(() -> new RuntimeException("Topic not found"));
+
+        TopicStatus status = topic.getStatus();
+        if (status != TopicStatus.PASS && status != TopicStatus.FAIL && status != TopicStatus.CONSIDER) {
+            throw new RuntimeException(
+                    "Can only lock topics with final status (PASS/FAIL/CONSIDER). Current: " + status);
+        }
+
+        topic.setIsLocked(true);
+        topic.setStatus(TopicStatus.LOCKED);
+        return topicRepository.save(topic);
+    }
+
+    public List<Topic> findAll() {
+        return topicRepository.findAll();
     }
 
     public Optional<Topic> findById(Long id) {
@@ -124,14 +158,20 @@ public class TopicService {
         return topicRepository.findPassedTopicsBySemester(semester);
     }
 
-    public Topic update(Long topicId, String title, String description) {
+    public Topic update(Long topicId, String title, String description, String studentGroupInfo) {
         Topic topic = topicRepository.findById(topicId)
                 .orElseThrow(() -> new RuntimeException("Topic not found"));
+
+        if (topic.getIsLocked()) {
+            throw new RuntimeException("Topic is locked. Cannot modify.");
+        }
 
         if (title != null)
             topic.setTitle(title);
         if (description != null)
             topic.setDescription(description);
+        if (studentGroupInfo != null)
+            topic.setStudentGroupInfo(studentGroupInfo);
 
         return topicRepository.save(topic);
     }

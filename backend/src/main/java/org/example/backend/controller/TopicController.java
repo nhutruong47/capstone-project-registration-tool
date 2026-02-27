@@ -37,12 +37,13 @@ public class TopicController {
             String title = (String) request.get("title");
             String description = (String) request.get("description");
             String majorPrefix = (String) request.getOrDefault("majorPrefix", "SE");
+            String studentGroupInfo = (String) request.get("studentGroupInfo");
 
             User supervisor = authService.findById(supervisorId)
                     .orElseThrow(() -> new RuntimeException("Supervisor not found"));
 
             Topic topic = topicService.create(supervisor, semesterId, registrationPhaseId,
-                    title, description, majorPrefix);
+                    title, description, majorPrefix, studentGroupInfo);
 
             // Trigger AI similarity check
             aiService.checkSimilarityAsync(topic.getId());
@@ -66,8 +67,10 @@ public class TopicController {
             String title = (String) request.get("title");
             String description = (String) request.get("description");
             String majorPrefix = (String) request.getOrDefault("majorPrefix", "SE");
+            String studentGroupInfo = (String) request.get("studentGroupInfo");
 
-            Topic childTopic = topicService.resubmit(parentTopicId, newPhaseId, title, description, majorPrefix);
+            Topic childTopic = topicService.resubmit(parentTopicId, newPhaseId, title, description,
+                    majorPrefix, studentGroupInfo);
 
             // Trigger AI similarity check for new version
             aiService.checkSimilarityAsync(childTopic.getId());
@@ -80,9 +83,27 @@ public class TopicController {
         }
     }
 
+    /**
+     * Moderator khóa kết quả đề tài
+     */
+    @PostMapping("/{id}/lock")
+    public ResponseEntity<?> lockTopic(@PathVariable Long id) {
+        try {
+            Topic topic = topicService.lockTopic(id);
+            return ResponseEntity.ok(Map.of(
+                    "message", "Topic locked successfully",
+                    "topic", topic));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Lấy tất cả đề tài
+     */
     @GetMapping
     public ResponseEntity<?> getAll() {
-        return ResponseEntity.ok(topicService.findByStatus(TopicStatus.PASS));
+        return ResponseEntity.ok(topicService.findAll());
     }
 
     @GetMapping("/{id}")
@@ -142,8 +163,9 @@ public class TopicController {
         try {
             String title = (String) request.get("title");
             String description = (String) request.get("description");
+            String studentGroupInfo = (String) request.get("studentGroupInfo");
 
-            Topic topic = topicService.update(id, title, description);
+            Topic topic = topicService.update(id, title, description, studentGroupInfo);
             return ResponseEntity.ok(topic);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

@@ -28,10 +28,22 @@ public class Topic {
     @Column(columnDefinition = "TEXT")
     private String description; // Mô tả chi tiết
 
+    @Column(columnDefinition = "TEXT")
+    private String studentGroupInfo; // Thông tin nhóm sinh viên (JSON: tên, MSSV, email)
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
     private TopicStatus status = TopicStatus.PENDING;
+
+    private Integer totalScore; // Điểm tổng cuối cùng
+
+    @Column(columnDefinition = "TEXT")
+    private String finalNote; // Ghi chú cuối cùng
+
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean isLocked = false; // Moderator khóa kết quả
 
     // AI Similarity Check
     private Double aiSimilarityScore; // Điểm tương đồng từ AI
@@ -53,6 +65,12 @@ public class Topic {
     @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler", "semester" })
     private RegistrationPhase registrationPhase; // Đợt đăng ký
 
+    // Quan hệ kế thừa đề tài (Đợt 2 nộp lại)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_topic_id")
+    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
+    private Topic parentTopic; // Đề tài cha (null nếu là đề tài gốc)
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -66,6 +84,9 @@ public class Topic {
         updatedAt = LocalDateTime.now();
         if (status == null) {
             status = TopicStatus.PENDING;
+        }
+        if (isLocked == null) {
+            isLocked = false;
         }
     }
 

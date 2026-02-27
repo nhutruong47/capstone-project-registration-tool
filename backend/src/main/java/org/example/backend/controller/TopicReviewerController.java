@@ -2,7 +2,6 @@ package org.example.backend.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.example.backend.entity.*;
-import org.example.backend.enums.ReviewStatus;
 import org.example.backend.repository.ChecklistTemplateRepository;
 import org.example.backend.service.AuthService;
 import org.example.backend.service.ChecklistService;
@@ -28,14 +27,18 @@ public class TopicReviewerController {
     private final ChecklistTemplateRepository checklistTemplateRepository;
 
     /**
-     * Moderator phân công reviewer cho đề tài
+     * Moderator phân công reviewer cho đề tài (chỉ định cụ thể)
+     * Request: { "reviewerIds": [1, 2] }
      */
     @PostMapping("/assign/{topicId}")
     public ResponseEntity<?> assignReviewers(@PathVariable Long topicId,
-            @RequestBody Map<String, Integer> request) {
+            @RequestBody Map<String, Object> request) {
         try {
-            int numberOfReviewers = request.getOrDefault("numberOfReviewers", 2);
-            List<TopicReviewer> reviewers = topicReviewerService.assignReviewers(topicId, numberOfReviewers);
+            @SuppressWarnings("unchecked")
+            List<Integer> rawIds = (List<Integer>) request.get("reviewerIds");
+            List<Long> reviewerIds = rawIds.stream().map(Integer::longValue).toList();
+
+            List<TopicReviewer> reviewers = topicReviewerService.assignReviewers(topicId, reviewerIds);
             return ResponseEntity.ok(Map.of(
                     "message", "Reviewers assigned successfully",
                     "reviewers", reviewers));
@@ -45,9 +48,45 @@ public class TopicReviewerController {
     }
 
     /**
+     * Moderator phân công tự động (random) reviewer
+     * Request: { "numberOfReviewers": 2 }
+     */
+    @PostMapping("/auto-assign/{topicId}")
+    public ResponseEntity<?> autoAssignReviewers(@PathVariable Long topicId,
+            @RequestBody Map<String, Integer> request) {
+        try {
+            int numberOfReviewers = request.getOrDefault("numberOfReviewers", 2);
+            List<TopicReviewer> reviewers = topicReviewerService.autoAssignReviewers(topicId, numberOfReviewers);
+            return ResponseEntity.ok(Map.of(
+                    "message", "Reviewers auto-assigned successfully",
+                    "reviewers", reviewers));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Moderator chỉ định Reviewer thứ 3 khi mâu thuẫn
+     * Request: { "reviewerId": 5 }
+     */
+    @PostMapping("/assign-third/{topicId}")
+    public ResponseEntity<?> assignThirdReviewer(@PathVariable Long topicId,
+            @RequestBody Map<String, Long> request) {
+        try {
+            Long reviewerId = request.get("reviewerId");
+            TopicReviewer thirdReviewer = topicReviewerService.assignThirdReviewer(topicId, reviewerId);
+            return ResponseEntity.ok(Map.of(
+                    "message", "Third reviewer assigned successfully",
+                    "reviewer", thirdReviewer));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
      * Reviewer nộp đánh giá checklist cho đề tài
-     * Request body: { "comment": "...", "scores": [{"checklistTemplateId": 1,
-     * "score": 1}, ...] }
+     * Request: { "comment": "...", "scores": [{"checklistTemplateId": 1, "score":
+     * 1}, ...] }
      */
     @PostMapping("/{topicReviewerId}/submit")
     public ResponseEntity<?> submitReview(@PathVariable Long topicReviewerId,
@@ -83,6 +122,14 @@ public class TopicReviewerController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
+    }
+
+    /**
+     * Lấy danh sách đề tài cần phân công Reviewer thứ 3
+     */
+    @GetMapping("/need-third-reviewer")
+    public ResponseEntity<?> getTopicsNeedingThirdReviewer() {
+        return ResponseEntity.ok(topicReviewerService.findTopicsNeedingThirdReviewer());
     }
 
     /**
