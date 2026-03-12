@@ -23,6 +23,8 @@ public interface TopicRepository extends JpaRepository<Topic, Long> {
     List<Topic> findBySupervisor(User supervisor);
 
     List<Topic> findBySemester(Semester semester);
+    
+    long countBySemester(Semester semester);
 
     List<Topic> findByStatus(TopicStatus status);
 

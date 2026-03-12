@@ -1,5 +1,6 @@
 package org.example.backend.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.entity.Semester;
 import org.example.backend.service.SemesterService;
@@ -18,6 +19,7 @@ public class SemesterController {
 
     private final SemesterService semesterService;
 
+    @Operation(summary = "Tạo Học kỳ mới", description = "Ví dụ: Summer 2026", tags = {"2. Admin"})
     @PostMapping
     public ResponseEntity<?> create(@RequestBody Map<String, String> request) {
         try {
@@ -33,11 +35,13 @@ public class SemesterController {
         }
     }
 
+    @Operation(summary = "Lấy danh sách tất cả học kỳ", tags = {"2. Admin"})
     @GetMapping
     public ResponseEntity<List<Semester>> getAll() {
         return ResponseEntity.ok(semesterService.findAll());
     }
 
+    @Operation(summary = "Lấy chi tiết học kỳ theo ID", tags = {"2. Admin"})
     @GetMapping("/{id}")
     public ResponseEntity<?> getById(@PathVariable Long id) {
         return semesterService.findById(id)
@@ -45,6 +49,7 @@ public class SemesterController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @Operation(summary = "Lấy học kỳ hiện tại đang hoạt động", tags = {"2. Admin"})
     @GetMapping("/active")
     public ResponseEntity<?> getActive() {
         return semesterService.getActiveSemester()
@@ -52,6 +57,7 @@ public class SemesterController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @Operation(summary = "Kích hoạt học kỳ", tags = {"2. Admin"})
     @PutMapping("/{id}/activate")
     public ResponseEntity<?> activate(@PathVariable Long id) {
         try {
@@ -62,6 +68,7 @@ public class SemesterController {
         }
     }
 
+    @Operation(summary = "Xóa học kỳ", tags = {"2. Admin"})
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id) {
         try {

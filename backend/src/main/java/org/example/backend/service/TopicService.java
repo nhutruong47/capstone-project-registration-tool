@@ -7,6 +7,7 @@ import org.example.backend.repository.RegistrationPhaseRepository;
 import org.example.backend.repository.SemesterRepository;
 import org.example.backend.repository.TopicInheritanceRepository;
 import org.example.backend.repository.TopicRepository;
+import org.example.backend.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,41 +24,54 @@ public class TopicService {
     private final SemesterRepository semesterRepository;
     private final RegistrationPhaseRepository registrationPhaseRepository;
     private final TopicInheritanceRepository topicInheritanceRepository;
+    private final UserRepository userRepository;
 
     /**
-     * Generate unique topic code: [Semester][Department][Sequence]
-     * Example: FA25SE001, SP26SE005
+     * Tự động sinh mã đề tài theo format: [Mã Ngành] + [STT] + [Kỳ] + [Năm]
+     * Ví dụ: A1Spring26 (Ngành AI, STT 1, Kỳ Spring 2026)
      */
-    private String generateTopicCode(Semester semester, String department) {
-        String prefix = semester.getCode() + (department != null ? department : "SE");
-        Long count = topicRepository.countByCodePrefix(semester, prefix);
-        return String.format("%s%03d", prefix, count + 1);
+    private String generateAutoId(Semester semester, String department) {
+        String deptPrefix = (department != null && !department.isEmpty()) ? department : "SE";
+        
+        // Count existing topics for this semester and department
+        // We'll use a rough count here or a prefix count.
+        Long count = topicRepository.countBySemester(semester); // Simplified, ideally should count by dept. Let's assume total count is enough or we use countBySemester
+        
+        // Format String: [Dept] + [Count] + [SemesterName] 
+        // Example: semester.getName() = "Spring 2026" -> "Spring26"
+        String semName = semester.getName().replaceAll("\\s+", "").replace("20", "");
+        if (semName.length() > 8) {
+            // fallback if format is unusual
+            semName = semester.getCode();
+        }
+        
+        return String.format("%s%d%s", deptPrefix, count + 1, semName);
     }
 
+
     /**
-     * Giảng viên tạo đề tài mới trong một đợt đăng ký
+     * Sinh viên tự đề xuất đề tài mới
      */
-    public Topic create(User supervisor, Long semesterId, Long registrationPhaseId,
+    public Topic createByStudent(Long semesterId, Long registrationPhaseId,
             String titleEn, String titleVi, String description, String department,
-            String studentGroupInfo, Integer studentCount,
-            Long supervisor2Id) {
+            String studentGroupInfo, Integer studentCount) {
+
         Semester semester = semesterRepository.findById(semesterId)
                 .orElseThrow(() -> new RuntimeException("Semester not found"));
 
         RegistrationPhase phase = registrationPhaseRepository.findById(registrationPhaseId)
                 .orElseThrow(() -> new RuntimeException("Registration phase not found"));
 
-        String code = generateTopicCode(semester, department);
-
+        // Tạm thời để code rỗng hoặc code nháp, mã chính thức sẽ được cấp sau khi qua AI
         Topic.TopicBuilder builder = Topic.builder()
-                .code(code)
-                .titleEn(titleEn)
+                .code("TEMP-" + System.currentTimeMillis()) 
+                .titleEn(titleEn != null && !titleEn.isEmpty() ? titleEn : titleVi)
                 .titleVi(titleVi)
                 .description(description)
                 .department(department != null ? department : "SE")
                 .studentGroupInfo(studentGroupInfo)
                 .studentCount(studentCount)
-                .supervisor(supervisor)
+                .supervisor(null) // Chưa có giảng viên hướng dẫn chính thức
                 .semester(semester)
                 .registrationPhase(phase)
                 .status(TopicStatus.PENDING)
@@ -74,8 +88,8 @@ public class TopicService {
         Topic parentTopic = topicRepository.findById(parentTopicId)
                 .orElseThrow(() -> new RuntimeException("Parent topic not found"));
 
-        if (parentTopic.getStatus() != TopicStatus.FAIL) {
-            throw new RuntimeException("Only FAILED topics can be resubmitted");
+        if (parentTopic.getStatus() != TopicStatus.REJECTED) {
+            throw new RuntimeException("Only REJECTED topics can be resubmitted");
         }
 
         RegistrationPhase newPhase = registrationPhaseRepository.findById(newPhaseId)
@@ -83,7 +97,7 @@ public class TopicService {
 
         Semester semester = parentTopic.getSemester();
         String dept = department != null ? department : parentTopic.getDepartment();
-        String code = generateTopicCode(semester, dept);
+        String code = generateAutoId(semester, dept);
 
         Topic childTopic = Topic.builder()
                 .code(code)
@@ -114,20 +128,26 @@ public class TopicService {
     }
 
     /**
-     * Moderator khóa kết quả đề tài
+     * Hoàn tất đề tài (Finalized)
      */
-    public Topic lockTopic(Long topicId) {
+    public Topic finalizeTopic(Long topicId, Long supervisorId) {
         Topic topic = topicRepository.findById(topicId)
                 .orElseThrow(() -> new RuntimeException("Topic not found"));
 
         TopicStatus status = topic.getStatus();
-        if (status != TopicStatus.PASS && status != TopicStatus.FAIL && status != TopicStatus.CONSIDER) {
+        if (status != TopicStatus.APPROVED && status != TopicStatus.REJECTED) {
             throw new RuntimeException(
-                    "Can only lock topics with final status (PASS/FAIL/CONSIDER). Current: " + status);
+                    "Can only finalize topics with APPROVED or REJECTED statuses. Current: " + status);
+        }
+
+        if (supervisorId != null) {
+            User supervisor = userRepository.findById(supervisorId)
+                .orElseThrow(() -> new RuntimeException("Supervisor not found"));
+            topic.setSupervisor(supervisor);
         }
 
         topic.setIsLocked(true);
-        topic.setStatus(TopicStatus.LOCKED);
+        topic.setStatus(TopicStatus.FINALIZED);
         return topicRepository.save(topic);
     }
 
@@ -196,6 +216,18 @@ public class TopicService {
                 .orElseThrow(() -> new RuntimeException("Topic not found"));
         topic.setAiSimilarityScore(similarityScore);
         topic.setAiSimilarityDetails(details);
+        
+        // Nếu AI test pass (ví dụ score < 80.0) -> Auto ID & Status = WAITING_MODERATOR
+        if (similarityScore != null && similarityScore < 80.0) {
+            String newCode = generateAutoId(topic.getSemester(), topic.getDepartment());
+            topic.setCode(newCode);
+            topic.setStatus(TopicStatus.WAITING_MODERATOR);
+            topic.setFinalNote((topic.getFinalNote() != null ? topic.getFinalNote() + "\n" : "") + "AI Checked: Passed");
+        } else {
+            topic.setStatus(TopicStatus.REJECTED);
+            topic.setFinalNote((topic.getFinalNote() != null ? topic.getFinalNote() + "\n" : "") + "AI Checked: Failed (High Similarity)");
+        }
+        
         return topicRepository.save(topic);
     }
 

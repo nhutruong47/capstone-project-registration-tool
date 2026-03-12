@@ -1,16 +1,15 @@
 package org.example.backend.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.entity.*;
-import org.example.backend.repository.ChecklistTemplateRepository;
 import org.example.backend.service.AuthService;
-import org.example.backend.service.ChecklistService;
 import org.example.backend.service.TopicReviewerService;
 import org.example.backend.service.TopicService;
+import org.example.backend.enums.TopicStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -23,13 +22,12 @@ public class TopicReviewerController {
     private final TopicReviewerService topicReviewerService;
     private final TopicService topicService;
     private final AuthService authService;
-    private final ChecklistService checklistService;
-    private final ChecklistTemplateRepository checklistTemplateRepository;
 
     /**
      * Moderator phân công reviewer cho đề tài (chỉ định cụ thể)
      * Request: { "reviewerIds": [1, 2] }
      */
+    @Operation(summary = "Moderator phân công Reviewer", tags = {"5. Moderator"})
     @PostMapping("/assign/{topicId}")
     public ResponseEntity<?> assignReviewers(@PathVariable Long topicId,
             @RequestBody Map<String, Object> request) {
@@ -47,28 +45,12 @@ public class TopicReviewerController {
         }
     }
 
-    /**
-     * Moderator phân công tự động (random) reviewer
-     * Request: { "numberOfReviewers": 2 }
-     */
-    @PostMapping("/auto-assign/{topicId}")
-    public ResponseEntity<?> autoAssignReviewers(@PathVariable Long topicId,
-            @RequestBody Map<String, Integer> request) {
-        try {
-            int numberOfReviewers = request.getOrDefault("numberOfReviewers", 2);
-            List<TopicReviewer> reviewers = topicReviewerService.autoAssignReviewers(topicId, numberOfReviewers);
-            return ResponseEntity.ok(Map.of(
-                    "message", "Reviewers auto-assigned successfully",
-                    "reviewers", reviewers));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
 
     /**
      * Moderator chỉ định Reviewer thứ 3 khi mâu thuẫn
      * Request: { "reviewerId": 5 }
      */
+    @Operation(summary = "Moderator phân công Reviewer thứ 3", tags = {"5. Moderator"})
     @PostMapping("/assign-third/{topicId}")
     public ResponseEntity<?> assignThirdReviewer(@PathVariable Long topicId,
             @RequestBody Map<String, Long> request) {
@@ -84,40 +66,19 @@ public class TopicReviewerController {
     }
 
     /**
-     * Reviewer nộp đánh giá checklist cho đề tài
-     * Request: { "comment": "...", "scores": [{"checklistTemplateId": 1, "score":
-     * 1}, ...] }
+     * Reviewer nộp đánh giá cho đề tài
+     * Request: { "comment": "...", "decision": "APPROVED" }
      */
+    @Operation(summary = "Reviewer nộp kết quả đánh giá", tags = {"4. Reviewer"})
     @PostMapping("/{topicReviewerId}/submit")
     public ResponseEntity<?> submitReview(@PathVariable Long topicReviewerId,
             @RequestBody Map<String, Object> request) {
         try {
             String comment = (String) request.get("comment");
+            String decisionStr = (String) request.get("decision");
+            TopicStatus decision = TopicStatus.valueOf(decisionStr);
 
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> scores = (List<Map<String, Object>>) request.get("scores");
-
-            List<ChecklistResult> checklistResults = new ArrayList<>();
-            for (Map<String, Object> scoreEntry : scores) {
-                Long templateId = Long.valueOf(scoreEntry.get("checklistTemplateId").toString());
-                Integer score = Integer.valueOf(scoreEntry.get("score").toString());
-
-                // Validate score: must be -1, 0, or 1
-                if (score < -1 || score > 1) {
-                    return ResponseEntity.badRequest().body(Map.of("error", "Score must be -1, 0, or 1"));
-                }
-
-                ChecklistTemplate template = checklistTemplateRepository.findById(templateId)
-                        .orElseThrow(() -> new RuntimeException("Checklist template not found: " + templateId));
-
-                ChecklistResult result = ChecklistResult.builder()
-                        .checklistTemplate(template)
-                        .score(score)
-                        .build();
-                checklistResults.add(result);
-            }
-
-            TopicReviewer topicReviewer = topicReviewerService.submitReview(topicReviewerId, checklistResults, comment);
+            TopicReviewer topicReviewer = topicReviewerService.submitReview(topicReviewerId, decision, comment);
             return ResponseEntity.ok(topicReviewer);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -127,6 +88,7 @@ public class TopicReviewerController {
     /**
      * Lấy danh sách đề tài cần phân công Reviewer thứ 3
      */
+    @Operation(summary = "Lấy danh sách đề tài cần phân công Reviewer thứ 3", tags = {"5. Moderator"})
     @GetMapping("/need-third-reviewer")
     public ResponseEntity<?> getTopicsNeedingThirdReviewer() {
         return ResponseEntity.ok(topicReviewerService.findTopicsNeedingThirdReviewer());
@@ -135,6 +97,7 @@ public class TopicReviewerController {
     /**
      * Lấy danh sách reviewer của một đề tài
      */
+    @Operation(summary = "Lấy danh sách Reviewer của một đề tài", tags = {"5. Moderator"})
     @GetMapping("/topic/{topicId}")
     public ResponseEntity<?> getByTopic(@PathVariable Long topicId) {
         return topicService.findById(topicId)
@@ -145,6 +108,7 @@ public class TopicReviewerController {
     /**
      * Lấy danh sách đề tài cần reviewer đánh giá
      */
+    @Operation(summary = "Lấy danh sách đề tài đang chờ Reviewer chấm", tags = {"4. Reviewer"})
     @GetMapping("/reviewer/{reviewerId}/pending")
     public ResponseEntity<?> getPendingByReviewer(@PathVariable Long reviewerId) {
         return authService.findById(reviewerId)
@@ -155,6 +119,7 @@ public class TopicReviewerController {
     /**
      * Lấy tất cả đánh giá của một reviewer
      */
+    @Operation(summary = "Lấy tất cả lịch sử chấm của một Reviewer", tags = {"4. Reviewer"})
     @GetMapping("/reviewer/{reviewerId}")
     public ResponseEntity<?> getByReviewer(@PathVariable Long reviewerId) {
         return authService.findById(reviewerId)
@@ -165,20 +130,23 @@ public class TopicReviewerController {
     /**
      * Lấy chi tiết một topic-reviewer assignment
      */
+    @Operation(summary = "Lấy thông tin chi tiết một lượt phân công chấm", tags = {"5. Moderator"})
     @GetMapping("/{id}")
     public ResponseEntity<?> getById(@PathVariable Long id) {
         return topicReviewerService.findById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
-
     /**
-     * Lấy kết quả checklist của một topic-reviewer
+     * Lấy thống kê số lượt chấm của tất cả giảng viên trong một học kỳ
      */
-    @GetMapping("/{topicReviewerId}/checklist-results")
-    public ResponseEntity<?> getChecklistResults(@PathVariable Long topicReviewerId) {
-        return topicReviewerService.findById(topicReviewerId)
-                .map(tr -> ResponseEntity.ok(checklistService.findResultsByTopicReviewer(tr)))
-                .orElse(ResponseEntity.notFound().build());
+    @Operation(summary = "Thống kê lượt chấm của Reviewer theo kỳ", tags = {"5. Moderator"})
+    @GetMapping("/stats/{semesterId}")
+    public ResponseEntity<?> getReviewerStats(@PathVariable Long semesterId) {
+        try {
+            return ResponseEntity.ok(topicReviewerService.getReviewerStats(semesterId));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 }

@@ -1,5 +1,6 @@
 package org.example.backend.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.entity.RegistrationPhase;
 import org.example.backend.service.RegistrationPhaseService;
@@ -19,6 +20,7 @@ public class RegistrationPhaseController {
     private final RegistrationPhaseService registrationPhaseService;
     private final SemesterService semesterService;
 
+    @Operation(summary = "Tạo đợt đăng ký mới", tags = {"2. Admin"})
     @PostMapping
     public ResponseEntity<?> create(@RequestBody Map<String, Object> request) {
         try {
@@ -34,6 +36,7 @@ public class RegistrationPhaseController {
         }
     }
 
+    @Operation(summary = "Lấy chi tiết đợt đăng ký theo ID", tags = {"2. Admin"})
     @GetMapping("/{id}")
     public ResponseEntity<?> getById(@PathVariable Long id) {
         return registrationPhaseService.findById(id)
@@ -41,6 +44,7 @@ public class RegistrationPhaseController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @Operation(summary = "Lấy các đợt đăng ký của một học kỳ", tags = {"2. Admin"})
     @GetMapping("/semester/{semesterId}")
     public ResponseEntity<?> getBySemester(@PathVariable Long semesterId) {
         return semesterService.findById(semesterId)
@@ -48,6 +52,7 @@ public class RegistrationPhaseController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @Operation(summary = "Lấy các đợt đăng ký đang mở của một học kỳ", tags = {"2. Admin"})
     @GetMapping("/semester/{semesterId}/open")
     public ResponseEntity<?> getOpenPhases(@PathVariable Long semesterId) {
         return semesterService.findById(semesterId)
@@ -55,6 +60,7 @@ public class RegistrationPhaseController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @Operation(summary = "Đóng đợt đăng ký", tags = {"2. Admin"})
     @PostMapping("/{id}/close")
     public ResponseEntity<?> close(@PathVariable Long id) {
         try {
@@ -65,6 +71,7 @@ public class RegistrationPhaseController {
         }
     }
 
+    @Operation(summary = "Mở đợt đăng ký", tags = {"2. Admin"})
     @PostMapping("/{id}/open")
     public ResponseEntity<?> open(@PathVariable Long id) {
         try {
@@ -75,6 +82,7 @@ public class RegistrationPhaseController {
         }
     }
 
+    @Operation(summary = "Xóa đợt đăng ký", tags = {"2. Admin"})
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id) {
         try {

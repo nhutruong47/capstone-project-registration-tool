@@ -19,8 +19,7 @@ public class DataInitializer {
         CommandLineRunner initDatabase(UserRepository userRepository,
                         SemesterRepository semesterRepository,
                         RegistrationPhaseRepository registrationPhaseRepository,
-                        TopicRepository topicRepository,
-                        ChecklistTemplateRepository checklistTemplateRepository) {
+                        TopicRepository topicRepository) {
                 return args -> {
                         if (userRepository.count() > 0) {
                                 System.out.println("Database already initialized. Skipping seed data.");
@@ -104,56 +103,6 @@ public class DataInitializer {
                                         .fullName("Duong Hoang Long").role(UserRole.STUDENT)
                                         .studentCode("SE17002").build());
 
-                        // 4. Checklist Templates (10 tiêu chí từ Excel mẫu)
-                        checklistTemplateRepository.save(ChecklistTemplate.builder()
-                                        .name("Tên đề tài phản ánh đúng định hướng")
-                                        .description("Tên đề tài có phản ánh đúng nội dung và định hướng nghiên cứu không")
-                                        .displayOrder(1).build());
-
-                        checklistTemplateRepository.save(ChecklistTemplate.builder()
-                                        .name("Ngữ cảnh sản phẩm (Product Context)")
-                                        .description("Bối cảnh và môi trường sử dụng sản phẩm có được mô tả rõ ràng không")
-                                        .displayOrder(2).build());
-
-                        checklistTemplateRepository.save(ChecklistTemplate.builder()
-                                        .name("Problem Statement")
-                                        .description("Vấn đề cần giải quyết có được trình bày rõ ràng không")
-                                        .displayOrder(3).build());
-
-                        checklistTemplateRepository.save(ChecklistTemplate.builder()
-                                        .name("Main Actors")
-                                        .description("Các tác nhân chính (actors) của hệ thống có được xác định rõ không")
-                                        .displayOrder(4).build());
-
-                        checklistTemplateRepository.save(ChecklistTemplate.builder()
-                                        .name("Main Flows")
-                                        .description("Các luồng xử lý chính của hệ thống có được mô tả không")
-                                        .displayOrder(5).build());
-
-                        checklistTemplateRepository.save(ChecklistTemplate.builder()
-                                        .name("Customers / Sponsors")
-                                        .description("Khách hàng hoặc nhà tài trợ có được xác định không")
-                                        .displayOrder(6).build());
-
-                        checklistTemplateRepository.save(ChecklistTemplate.builder()
-                                        .name("Approach / Applied Technology")
-                                        .description("Công nghệ áp dụng và phương pháp tiếp cận có phù hợp không")
-                                        .displayOrder(7).build());
-
-                        checklistTemplateRepository.save(ChecklistTemplate.builder()
-                                        .name("Scope phù hợp")
-                                        .description("Phạm vi đề tài có phù hợp với thời gian và nguồn lực không")
-                                        .displayOrder(8).build());
-
-                        checklistTemplateRepository.save(ChecklistTemplate.builder()
-                                        .name("Complexity phù hợp Capstone")
-                                        .description("Độ phức tạp có đủ mức độ cho đồ án tốt nghiệp không")
-                                        .displayOrder(9).build());
-
-                        checklistTemplateRepository.save(ChecklistTemplate.builder()
-                                        .name("Applicability & Feasibility")
-                                        .description("Tính ứng dụng và khả thi của đề tài")
-                                        .displayOrder(10).build());
 
                         // 5. Sample Topics
                         topicRepository.save(Topic.builder()
@@ -167,9 +116,9 @@ public class DataInitializer {
                                         .supervisor(lecturer1)
                                         .semester(semester)
                                         .registrationPhase(phase1)
-                                        .status(TopicStatus.PASS)
+                                        .status(TopicStatus.APPROVED)
                                         .totalScore(7)
-                                        .finalNote("R1 và R2 đồng ý: PASS")
+                                        .finalNote("R1 và R2 đồng ý: APPROVED")
                                         .submittedAt(LocalDateTime.now())
                                         .build());
 
@@ -197,9 +146,9 @@ public class DataInitializer {
                                         .supervisor(lecturer2)
                                         .semester(semester)
                                         .registrationPhase(phase1)
-                                        .status(TopicStatus.FAIL)
+                                        .status(TopicStatus.REJECTED)
                                         .totalScore(-3)
-                                        .finalNote("R1 và R2 đồng ý: FAIL")
+                                        .finalNote("R1 và R2 đồng ý: REJECTED")
                                         .submittedAt(LocalDateTime.now())
                                         .build());
 

@@ -96,8 +96,6 @@ src/main/java/org/example/backend/
 │   ├── Topic.java
 │   ├── TopicVersion.java
 │   ├── Review.java
-│   ├── Team.java
-│   ├── TeamMember.java
 │   ├── Registration.java
 │   ├── Semester.java
 │   └── Notification.java
@@ -135,11 +133,12 @@ src/main/java/org/example/backend/
 
 | Actor | Vai Trò | Quyền Hạn Chính |
 |-------|---------|-----------------|
-| **Admin** | Quản trị viên hệ thống | Quản lý cấu hình học kỳ, tài khoản, phân quyền |
-| **Supervisor** | Giảng viên hướng dẫn | Đề xuất đề tài, hướng dẫn sinh viên, duyệt đăng ký |
-| **Reviewer** | Giảng viên phản biện | Thẩm định đề tài của Supervisor khác |
-| **Coordinator** | Điều phối viên/Chủ nhiệm BM | Quyết định cuối cùng với đề tài tranh cãi |
-| **Student** | Sinh viên | Tạo nhóm, tìm thành viên, đăng ký đề tài |
+| **Admin** | Quản trị viên hệ thống | Quản lý cấu hình học kỳ, tài khoản, thiết lập thời gian biểu |
+| **Moderator** | Điều phối viên | Gán Reviewer 1 & 2, quyết định gán Reviewer thứ 3 |
+| **Reviewer** | Giảng viên phản biện | Thẩm định đề cương của sinh viên |
+| **Coordinator** | Giảng viên thứ 3 | Phân xử khi 2 Reviewer bất đồng ý kiến |
+| **Supervisor** | Giảng viên hướng dẫn | Hướng dẫn sinh viên sau khi đề tài được duyệt (phân bổ ở bước cuối) |
+| **Student (Leader)**| Trưởng nhóm SV | Nộp ý tưởng đề tài đại diện cho nhóm (không cần tạo nhóm trước) |
 
 ### 3.1 User Role Enum
 
@@ -155,179 +154,51 @@ public enum UserRole {
 
 ---
 
-## 4. PHÂN HỆ CHỨC NĂNG
+## 4. QUY TRÌNH NGHIỆP VỤ CỐT LÕI (7 BƯỚC)
 
-### 4.1 PHÂN HỆ 1: QUẢN LÝ VÒNG ĐỜI ĐỀ TÀI (Topic Lifecycle Management)
+Hệ thống hoạt động theo một luồng duy nhất từ lúc thiết lập đến khi sinh viên nộp và chốt đề tài:
 
-#### 4.1.1 Đề Xuất & Mã Hóa (Submission & Auto-Coding)
+**Bước 1: ADMIN (Quản trị viên) - Chuẩn bị Học kỳ & Hệ thống**
+- **Tạo Học kỳ mới:** Admin đăng nhập vào hệ thống, tạo một Học kỳ (Semester) mới (Ví dụ: Spring 2026).
+- **Thiết lập Thời gian biểu:** Admin cấu hình ngày bắt đầu / kết thúc Học kỳ, cũng như ngày mở/đóng đợt nộp đề xuất đề tài cho sinh viên.
+- **Quản lý Tài khoản:** Đảm bảo danh sách Giảng viên (Reviewer), Moderator và Sinh viên (Student) đã được import đầy đủ và hợp lệ.
 
-**Chức năng:**
-- Supervisor nộp đề tài mới với đầy đủ thông tin
-- Hệ thống tự động sinh mã đề tài duy nhất
+**Bước 2: Sinh viên (Leader) - Nộp Ý tưởng (Không cần file, Không cần tạo nhóm)**
+- Khi thời gian "Mở đăng ký" bắt đầu, Leader (Tài khoản đại diện nhóm) đăng nhập vào hệ thống.
+- Leader truy cập form "Đề tài Sinh viên tự đề xuất" và điền trực tiếp:
+  - Tên đề tài (Tiếng Việt & Anh).
+  - `department` (Mã ngành: SE, AI, IA...).
+  - `description` (Mô tả chi tiết ý định xây dựng hệ thống, module...).
+  - Tên/Mã SV của các thành viên trong nhóm (Ví dụ: Nhập đủ 4 mã SV).
+- Bấm "Submit". Đề tài được lưu vào DB với trạng thái ban đầu là `PENDING`.
 
-**Thông tin đề tài:**
-| Field | Mô Tả | Bắt Buộc |
-|-------|-------|----------|
-| `titleEn` | Tiêu đề Tiếng Anh | ✅ |
-| `titleVi` | Tiêu đề Tiếng Việt | ✅ |
-| `description` | Mô tả chi tiết | ✅ |
-| `requirements` | Yêu cầu kỹ thuật | ✅ |
-| `maxTeams` | Số nhóm tối đa | ✅ |
-| `semesterId` | Học kỳ | ✅ |
+**Bước 3: AI - Lọc đề tài & Tự động Đánh Mã (Auto ID Generation)**
+- Ngay lập tức, hệ thống gửi ngầm nội dung (đặc biệt là description) qua OpenAI để chạy 2 bài test:
+  - **Compliance Check:** Kiểm tra chất lượng mô tả (nội dung có nghiêm túc, đủ ý chính không).
+  - **Similarity Check:** Chống đạo nhái, so sánh với các khóa trước để ra "Điểm trùng lắp" (vd: 5%).
+- Nếu AI chấm đạt (hoặc điểm rủi ro thấp), Hệ thống tự động sinh Mã Đề tài theo format ấn định: `[Mã Ngành] + [STT] + [Kỳ] + [Năm]`. 👉 Ví dụ: Nhóm nộp sản phẩm ngành AI đầu tiên của kỳ Spring 2026 sẽ được AI cấp liền mã: `A1Spring26`.
+- Đề tài lúc này sẽ đính kèm "Điểm AI", "Mã đề tài" và tự động chuyển trạng thái chờ: `WAITING_MODERATOR`.
 
-**Cơ chế sinh mã (Race Condition Prevention):**
-```java
-// Sử dụng Database Sequence hoặc Distributed Lock
-// Format: [Kỳ]-[Ngành][Sequence]
-// Ví dụ: SP26-SE005, FA25-IT012
+**Bước 4: MODERATOR (Điều phối viên) - Chọn 2 Giảng viên chấm thi**
+- Moderator đăng nhập, xem danh sách các đề tài đã có mã (vd: A1Spring26) và đã pass qua vòng lọc AI.
+- Moderator phân tích nội dung đề tài và chuyên môn của các giảng viên trong khoa.
+- **Thao tác thủ công:** Moderator tự tay gán 2 Thầy/Cô phù hợp nhất vào ô Reviewer 1 và Reviewer 2 để phụ trách chấm Đề cương này.
+- Hệ thống gửi chuông báo/email cho 2 thầy cô vừa được phân công. Trạng thái đề tài cập nhật thành `IN_REVIEW`.
 
-@Entity
-public class TopicSequence {
-    @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "topic_seq")
-    @SequenceGenerator(name = "topic_seq", sequenceName = "TOPIC_SEQUENCE", allocationSize = 1)
-    private Long id;
-}
-```
+**Bước 5: 2 Giảng viên REVIEWER - Thẩm định độc lập**
+- 2 Giảng viên vào hệ thống, mở Đề cương của bạn Leader ra đọc và đưa ra phán quyết:
+  - TH1: Cả hai cùng vote `APPROVED` ➡️ Đề tài Pass (Chuyển sang Bước 7).
+  - TH2: Cả hai cùng báo Hủy/Sửa ➡️ Trả lại cho Leader sửa description để nộp lại vòng sau.
+  - TH3: 1 người vote `APPROVED`, 1 người vote `REJECTED` (Lệch ý kiến) ➡️ Hệ thống đẩy trạng thái báo động `NEED_THIRD_REVIEWER`.
 
-#### 4.1.2 Sàng Lọc AI (AI Pre-screening)
+**Bước 6: MODERATOR - Chọn Người thứ 3 (Tie-breaker)**
+- Nhận được cảnh báo "Lệch ý kiến" của mã A1Spring26, Moderator đăng nhập lại.
+- Moderator tiếp tục chọn thủ công thêm 1 Giám khảo chung thẩm (Coordinator / Giảng viên thứ 3) dạn dày kinh nghiệm vào hệ thống.
+- Vị Giám khảo thứ 3 này sẽ vào đọc, cân nhắc nhận xét của 2 người đi trước, và đưa ra 1 phiếu Vote chốt hạ cuối cùng: `APPROVED` hoặc `REJECTED`.
 
-**Quy trình xử lý bất đồng bộ:**
-
-```
-┌──────────┐     ┌──────────────┐     ┌─────────────┐     ┌──────────────┐
-│  Submit  │────▶│   PROCESSING │────▶│  AI Check   │────▶│ Update Topic │
-│  Topic   │     │   (Status)   │     │  (Async)    │     │   Status     │
-└──────────┘     └──────────────┘     └─────────────┘     └──────────────┘
-                                             │
-                        ┌────────────────────┴────────────────────┐
-                        ▼                                         ▼
-                ┌───────────────┐                         ┌───────────────┐
-                │  AI Check 1   │                         │  AI Check 2   │
-                │  Compliance   │                         │  Similarity   │
-                └───────────────┘                         └───────────────┘
-```
-
-**AI Check 1 - Kiểm tra hình thức (Compliance Check):**
-```json
-{
-  "check_type": "compliance",
-  "criteria": {
-    "description_min_length": 200,
-    "description_max_length": 2000,
-    "has_clear_problem_statement": true,
-    "has_technology_stack": true,
-    "has_deliverables": true
-  },
-  "result": {
-    "passed": true,
-    "score": 85,
-    "feedback": ["Mô tả rõ ràng", "Đề xuất công nghệ hợp lý"]
-  }
-}
-```
-
-**AI Check 2 - Kiểm tra trùng lặp (Similarity Check):**
-```json
-{
-  "check_type": "similarity",
-  "method": "openai_embeddings",
-  "threshold": 80,
-  "result": {
-    "similarity_score": 45,
-    "similar_topics": [
-      {
-        "topic_code": "SP25-SE003",
-        "title": "E-commerce Platform",
-        "similarity": 45
-      }
-    ],
-    "passed": true
-  }
-}
-```
-
-#### 4.1.3 Thẩm Định Chuyên Môn (Peer Review)
-
-**Phân công Reviewer:**
-- Mỗi đề tài được gán **2 Reviewers**
-- **Constraint:** Reviewer ≠ Supervisor (không được review đề tài của chính mình)
-
-**Thang đánh giá:**
-| Decision | Giá Trị | Mô Tả |
-|----------|---------|-------|
-| `APPROVED` | +1 | Đồng ý duyệt |
-| `REJECTED` | -1 | Từ chối |
-| `CONSIDER` | 0 | Cần xem xét/sửa đổi |
-
-**Quy tắc quyết định (Decision Matrix):**
-
-| Reviewer 1 | Reviewer 2 | Kết Quả |
-|------------|------------|---------|
-| APPROVED | APPROVED | ✅ `APPROVED` (Tự động) |
-| REJECTED | REJECTED | ❌ `REJECTED` (Tự động) |
-| APPROVED | REJECTED | ⏳ `WAITING_COORDINATOR` |
-| APPROVED | CONSIDER | ⏳ `WAITING_COORDINATOR` |
-| REJECTED | CONSIDER | ⏳ `WAITING_COORDINATOR` |
-| CONSIDER | CONSIDER | ⏳ `WAITING_COORDINATOR` |
-
-**Vòng lặp chỉnh sửa (Feedback Loop):**
-```
-┌──────────┐     ┌──────────────┐     ┌─────────────┐     ┌──────────────┐
-│ CONSIDER │────▶│  Supervisor  │────▶│  Create V2  │────▶│  Reset AI &  │
-│          │     │   Updates    │     │             │     │    Review    │
-└──────────┘     └──────────────┘     └─────────────┘     └──────────────┘
-```
-
----
-
-### 4.2 PHÂN HỆ 2: ĐĂNG KÝ CỦA SINH VIÊN (Student Registration)
-
-#### 4.2.1 Quản Lý Nhóm (Team Formation)
-
-**Quy tắc:**
-- Sinh viên **không đăng ký lẻ**, phải theo nhóm
-- Số lượng thành viên: **4-5 người**
-- Chỉ nhóm đủ số lượng tối thiểu mới được đăng ký đề tài
-
-**Chức năng:**
-| Chức Năng | Mô Tả |
-|-----------|-------|
-| Tạo nhóm | Leader tạo nhóm mới |
-| Mời thành viên | Gửi mã mời (Invite Code) |
-| Kick thành viên | Leader loại thành viên |
-| Rời nhóm | Thành viên tự rời nhóm |
-
-**Team Status Flow:**
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   FORMING   │────▶│    READY    │────▶│  REGISTERED │
-│  (<4 SV)    │     │  (4-5 SV)   │     │  (Có đề tài)│
-└─────────────┘     └─────────────┘     └─────────────┘
-```
-
-#### 4.2.2 Đăng Ký Đề Tài (Topic Registration)
-
-**Hiển thị:** Sinh viên chỉ thấy đề tài có status `APPROVED` và `PUBLISHED`
-
-**Quy tắc FCFS (First Come First Served):**
-```
-┌─────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  Team A     │────▶│ PENDING_APPROVAL│────▶│    FINALIZED    │
-│  Registers  │     │   (Chờ GV)      │     │   (GV duyệt)    │
-└─────────────┘     └─────────────────┘     └─────────────────┘
-
-  Team B, C...      "Đã có người đăng ký"
-     ❌ Blocked
-```
-
-**Registration Status:**
-| Status | Mô Tả |
-|--------|-------|
-| `PENDING` | Chờ Supervisor duyệt |
-| `APPROVED` | Supervisor đã duyệt |
-| `REJECTED` | Supervisor từ chối |
-| `FINALIZED` | Hoàn tất, đề tài được gán |
+**Bước 7: FINALIZED - Hoàn tất (Phân bổ Giảng viên hướng dẫn)**
+- Khi Đề tài nhận được phán quyết `APPROVED` cuối cùng, hệ thống chớp nhoáng đóng đinh trạng thái: `FINALIZED`.
+- Lúc này, hệ thống/nhà trường sẽ phân bổ Giảng viên hướng dẫn. Mọi thông tin gắn liền với đề tài khóa lại.
 
 ---
 
@@ -361,32 +232,30 @@ public class TopicSequence {
                     └──────────────┘
 
 ┌──────────────┐       ┌──────────────┐       ┌──────────────┐
-│     TEAM     │       │ TEAM_MEMBER  │       │ REGISTRATION │
+│     USER     │       │    TOPIC     │       │ REGISTRATION │
 ├──────────────┤       ├──────────────┤       ├──────────────┤
 │ id           │       │ id           │       │ id           │
-│ name         │◀──────│ teamId       │       │ teamId       │
-│ inviteCode   │       │ userId       │──────▶│ topicId      │
-│ leaderId     │       │ role         │       │ status       │
-│ status       │       │ joinedAt     │       │ registeredAt │
-│ createdAt    │       └──────────────┘       │ approvedAt   │
-└──────────────┘                              └──────────────┘
+│ email        │       │ code         │       │ leaderId     │
+│ password     │──────▶│ titleEn      │◀──────│ topicId      │
+│ fullName     │       │ titleVi      │       │ status       │
+│ role         │       │ description  │       │ registeredAt │
+│ department   │       │ status       │       │ approvedAt   │
+└──────────────┘       │ leaderId     │       └──────────────┘
+                       │ semesterId   │
+                       └──────────────┘
 ```
 
 ### 5.2 Topic Status Enum
 
 ```java
 public enum TopicStatus {
-    DRAFT,              // Bản nháp
-    PROCESSING,         // Đang xử lý AI
-    AI_PASSED,          // AI đã duyệt
-    AI_FAILED,          // AI từ chối
-    PENDING_REVIEW,     // Chờ peer review
-    WAITING_COORDINATOR,// Chờ Coordinator quyết định
-    APPROVED,           // Đã duyệt
-    REJECTED,           // Bị từ chối
-    PUBLISHED,          // Đã công bố cho SV
-    REGISTERED,         // Đã có SV đăng ký
-    FINALIZED           // Hoàn tất
+    PENDING,             // Sinh viên vừa nộp đề xuất
+    WAITING_MODERATOR,   // Đã qua AI lọc, chờ Moderator phân công người chấm
+    IN_REVIEW,           // Đang được 2 giảng viên Reviewer chấm
+    NEED_THIRD_REVIEWER, // Lệch ý kiến, chờ Moderator gán Giám khảo 3
+    REJECTED,            // Đề tài bị từ chối/Bắt sửa lại
+    APPROVED,            // Reviewer duyệt thành công (bước đệm)
+    FINALIZED            // Hoàn tất (Sẵn sàng thực hiện)
 }
 ```
 
@@ -394,63 +263,24 @@ public enum TopicStatus {
 
 ## 6. QUY TRÌNH NGHIỆP VỤ
 
-### 6.1 Topic Lifecycle Flow
+## 6. SƠ ĐỒ TRẠNG THÁI (STATUS FLOW)
 
 ```
-┌─────────┐    ┌────────────┐    ┌───────────┐    ┌─────────────┐
-│  DRAFT  │───▶│ PROCESSING │───▶│ AI_PASSED │───▶│PENDING_REVIEW│
-└─────────┘    └────────────┘    └───────────┘    └─────────────┘
-                    │                                    │
-                    ▼                                    ▼
-              ┌───────────┐                    ┌─────────────────┐
-              │ AI_FAILED │                    │    2 Reviews    │
-              └───────────┘                    └─────────────────┘
-                    │                          ╱       │       ╲
-                    ▼                         ▼        ▼        ▼
-              ┌───────────┐            ┌─────────┐ ┌───────┐ ┌─────────────────┐
-              │  Resubmit │            │APPROVED │ │REJECTED│ │WAITING_COORDINATOR│
-              └───────────┘            └─────────┘ └───────┘ └─────────────────┘
-                                            │                        │
-                                            ▼                        ▼
-                                      ┌───────────┐           ┌─────────────┐
-                                      │ PUBLISHED │           │ Coordinator │
-                                      └───────────┘           │  Decision   │
-                                            │                 └─────────────┘
-                                            ▼
-                                      ┌───────────┐
-                                      │REGISTERED │
-                                      └───────────┘
+┌─────────┐   ┌───────────────────┐   ┌───────────┐
+│ PENDING │──▶│ WAITING_MODERATOR │──▶│ IN_REVIEW │
+└─────────┘   └───────────────────┘   └───────────┘
                                             │
-                                            ▼
-                                      ┌───────────┐
-                                      │ FINALIZED │
-                                      └───────────┘
-```
-
-### 6.2 Student Registration Flow
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    STUDENT REGISTRATION FLOW                 │
-└─────────────────────────────────────────────────────────────┘
-
-Step 1: Team Formation
-┌──────────┐    ┌───────────┐    ┌───────────┐    ┌─────────┐
-│  Create  │───▶│   Invite  │───▶│  Members  │───▶│  READY  │
-│   Team   │    │  Members  │    │   Join    │    │  (4-5)  │
-└──────────┘    └───────────┘    └───────────┘    └─────────┘
-
-Step 2: Topic Registration
-┌─────────┐    ┌───────────┐    ┌───────────┐    ┌───────────┐
-│  Browse │───▶│  Select   │───▶│  PENDING  │───▶│ FINALIZED │
-│  Topics │    │   Topic   │    │  APPROVAL │    │           │
-└─────────┘    └───────────┘    └───────────┘    └───────────┘
-                                      │
-                                      ▼
-                                ┌───────────┐
-                                │ Supervisor│
-                                │  Approves │
-                                └───────────┘
+               ┌────────────────────────────┴──────────────────────────┐
+               │                            │                          │
+               ▼                            ▼                          ▼
+         ┌──────────┐              ┌─────────────────┐           ┌──────────┐
+         │ REJECTED │              │NEED_THIRD_REVIEW│           │ APPROVED │
+         └──────────┘              └─────────────────┘           └──────────┘
+                                            │                          │
+                                            ▼                          │
+                                     ┌──────────┐                      │
+                                     │ FINALIZED│◀─────────────────────┘
+                                     └──────────┘
 ```
 
 ---
@@ -489,13 +319,7 @@ Step 2: Topic Registration
 
 ### 7.4 Team APIs
 
-| Method | Endpoint | Mô Tả | Role |
-|--------|----------|-------|------|
-| POST | `/api/teams` | Tạo nhóm mới | Student |
-| GET | `/api/teams/my-team` | Lấy thông tin nhóm | Student |
-| POST | `/api/teams/join` | Tham gia nhóm bằng code | Student |
-| DELETE | `/api/teams/members/{userId}` | Kick thành viên | Leader |
-| POST | `/api/teams/leave` | Rời nhóm | Student |
+(Removed: No longer needed. Leader uses Topic APIs to register topics with group info.)
 
 ### 7.5 Registration APIs
 

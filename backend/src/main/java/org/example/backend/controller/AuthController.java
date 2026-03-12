@@ -1,5 +1,7 @@
 package org.example.backend.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.entity.User;
 import org.example.backend.enums.UserRole;
@@ -14,10 +16,13 @@ import java.util.Map;
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
+@Tag(name = "1. Authentication")
+@Tag(name = "2. Admin")
 public class AuthController {
 
     private final AuthService authService;
 
+    @Operation(summary = "Đăng ký tài khoản mới", tags = {"1. Authentication"})
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody Map<String, String> request) {
         try {
@@ -33,6 +38,7 @@ public class AuthController {
         }
     }
 
+    @Operation(summary = "Đăng nhập hệ thống", tags = {"1. Authentication"})
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> request) {
         try {
@@ -50,11 +56,13 @@ public class AuthController {
         }
     }
 
+    @Operation(summary = "Lấy danh sách tất cả người dùng", tags = {"2. Admin"})
     @GetMapping("/users")
     public ResponseEntity<List<User>> getAllUsers() {
         return ResponseEntity.ok(authService.findAll());
     }
 
+    @Operation(summary = "Lấy thông tin người dùng theo ID", tags = {"2. Admin"})
     @GetMapping("/users/{id}")
     public ResponseEntity<?> getUserById(@PathVariable Long id) {
         return authService.findById(id)
@@ -62,11 +70,13 @@ public class AuthController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @Operation(summary = "Lấy danh sách người dùng theo vai trò", tags = {"2. Admin"})
     @GetMapping("/users/role/{role}")
     public ResponseEntity<List<User>> getUsersByRole(@PathVariable UserRole role) {
         return ResponseEntity.ok(authService.findByRole(role));
     }
 
+    @Operation(summary = "Cập nhật vai trò người dùng", tags = {"2. Admin"})
     @PutMapping("/users/{id}/role")
     public ResponseEntity<?> updateUserRole(@PathVariable Long id, @RequestBody Map<String, String> request) {
         try {
@@ -78,6 +88,7 @@ public class AuthController {
         }
     }
 
+    @Operation(summary = "Xóa người dùng", tags = {"2. Admin"})
     @DeleteMapping("/users/{id}")
     public ResponseEntity<?> deleteUser(@PathVariable Long id) {
         try {

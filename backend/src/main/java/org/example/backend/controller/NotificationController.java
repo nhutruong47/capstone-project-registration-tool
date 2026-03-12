@@ -1,5 +1,7 @@
 package org.example.backend.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.entity.Notification;
 import org.example.backend.entity.User;
@@ -19,6 +21,7 @@ public class NotificationController {
     private final NotificationService notificationService;
     private final AuthService authService;
 
+    @Operation(summary = "Lấy danh sách thông báo của người dùng", tags = {"6. General"})
     @GetMapping("/user/{userId}")
     public ResponseEntity<?> getByUser(@PathVariable Long userId) {
         return authService.findById(userId)
@@ -26,6 +29,7 @@ public class NotificationController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @Operation(summary = "Lấy danh sách thông báo chưa đọc", tags = {"6. General"})
     @GetMapping("/user/{userId}/unread")
     public ResponseEntity<?> getUnreadByUser(@PathVariable Long userId) {
         return authService.findById(userId)
@@ -33,6 +37,7 @@ public class NotificationController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @Operation(summary = "Lấy số lượng thông báo chưa đọc", tags = {"6. General"})
     @GetMapping("/user/{userId}/unread-count")
     public ResponseEntity<?> getUnreadCount(@PathVariable Long userId) {
         return authService.findById(userId)
@@ -40,6 +45,7 @@ public class NotificationController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @Operation(summary = "Đánh dấu một thông báo là đã đọc", tags = {"6. General"})
     @PutMapping("/{id}/read")
     public ResponseEntity<?> markAsRead(@PathVariable Long id) {
         try {
@@ -50,6 +56,7 @@ public class NotificationController {
         }
     }
 
+    @Operation(summary = "Đánh dấu tất cả thông báo là đã đọc", tags = {"6. General"})
     @PutMapping("/user/{userId}/read-all")
     public ResponseEntity<?> markAllAsRead(@PathVariable Long userId) {
         try {
@@ -63,6 +70,7 @@ public class NotificationController {
         }
     }
 
+    @Operation(summary = "Xóa thông báo", tags = {"6. General"})
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id) {
         try {

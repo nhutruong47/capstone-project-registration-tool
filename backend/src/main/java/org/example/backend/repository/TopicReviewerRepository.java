@@ -33,4 +33,6 @@ public interface TopicReviewerRepository extends JpaRepository<TopicReviewer, Lo
 
     @Query("SELECT tr FROM TopicReviewer tr WHERE tr.reviewer = :reviewer AND tr.reviewStatus <> 'COMPLETED'")
     List<TopicReviewer> findPendingByReviewer(@Param("reviewer") User reviewer);
+    @Query("SELECT COUNT(tr) FROM TopicReviewer tr WHERE tr.reviewer = :reviewer AND tr.topic.semester = :semester")
+    Long countByReviewerAndTopicSemester(@Param("reviewer") User reviewer, @Param("semester") org.example.backend.entity.Semester semester);
 }
