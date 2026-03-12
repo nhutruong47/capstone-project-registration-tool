@@ -9,7 +9,6 @@ import org.example.backend.repository.*;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -139,7 +138,6 @@ public class DataInitializer {
                                         .submittedAt(LocalDateTime.now())
                                         .build());
 
-                        topicRepository.save(topic3);
 
                         // 6. Topics for the new 7-Step Flow
                         // Step 3: Waiting Moderator (Passed AI)
