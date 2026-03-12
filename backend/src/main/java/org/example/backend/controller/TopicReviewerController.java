@@ -24,6 +24,57 @@ public class TopicReviewerController {
     private final AuthService authService;
 
     /**
+     * Reviewer nộp đánh giá cho đề tài kèm Checklist
+     * Cấu trúc payload khớp Step 5 của User
+     */
+    @Operation(summary = "Reviewer nộp kết quả đánh giá (Dùng topicId & reviewerId)", tags = {"4. Reviewer"})
+    @PostMapping("/submit")
+    public ResponseEntity<?> submitReviewUnified(@RequestBody Map<String, Object> request) {
+        try {
+            Long topicId = Long.valueOf(request.get("topicId").toString());
+            Long reviewerId = Long.valueOf(request.get("reviewerId").toString());
+            String comment = (String) request.get("comment");
+            String decisionStr = (String) request.get("decision");
+            TopicStatus decision = TopicStatus.valueOf(decisionStr);
+            Object totalScoreObj = request.get("totalScore");
+            Integer totalScore = totalScoreObj != null ? Integer.valueOf(totalScoreObj.toString()) : 0;
+            
+            // checklistDetails có thể là String hoặc Map (nếu là Map thì convert sang JSON string)
+            Object checklistObj = request.get("checklistDetails");
+            String checklistDetails = checklistObj != null ? checklistObj.toString() : "";
+
+            TopicReviewer topicReviewer = topicReviewerService.submitReviewByTopicAndReviewer(
+                    topicId, reviewerId, decision, comment, totalScore, checklistDetails);
+            
+            return ResponseEntity.ok(topicReviewer);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Reviewer nộp đánh giá theo ID bản ghi phân công
+     */
+    @Operation(summary = "Reviewer nộp kết quả đánh giá (Dùng assignmentId)", tags = {"4. Reviewer"})
+    @PostMapping("/{topicReviewerId}/submit")
+    public ResponseEntity<?> submitReview(@PathVariable Long topicReviewerId,
+            @RequestBody Map<String, Object> request) {
+        try {
+            String comment = (String) request.get("comment");
+            String decisionStr = (String) request.get("decision");
+            TopicStatus decision = TopicStatus.valueOf(decisionStr);
+            Object totalScoreObj = request.get("totalScore");
+            Integer totalScore = totalScoreObj != null ? Integer.valueOf(totalScoreObj.toString()) : 0;
+            String checklistDetails = request.get("checklistDetails") != null ? request.get("checklistDetails").toString() : "";
+
+            TopicReviewer topicReviewer = topicReviewerService.submitReview(topicReviewerId, decision, comment, totalScore, checklistDetails);
+            return ResponseEntity.ok(topicReviewer);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
      * Moderator phân công reviewer cho đề tài (chỉ định cụ thể)
      * Request: { "reviewerIds": [1, 2] }
      */
@@ -59,28 +110,6 @@ public class TopicReviewerController {
             return ResponseEntity.ok(Map.of(
                     "message", "Third reviewer assigned successfully",
                     "reviewer", thirdReviewer));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    /**
-     * Reviewer nộp đánh giá cho đề tài kèm Checklist
-     * Request: { "comment": "...", "decision": "APPROVED", "totalScore": 8, "checklistDetails": "{...}" }
-     */
-    @Operation(summary = "Reviewer nộp kết quả đánh giá", tags = {"4. Reviewer"})
-    @PostMapping("/{topicReviewerId}/submit")
-    public ResponseEntity<?> submitReview(@PathVariable Long topicReviewerId,
-            @RequestBody Map<String, Object> request) {
-        try {
-            String comment = (String) request.get("comment");
-            String decisionStr = (String) request.get("decision");
-            TopicStatus decision = TopicStatus.valueOf(decisionStr);
-            Integer totalScore = (Integer) request.get("totalScore");
-            String checklistDetails = (String) request.get("checklistDetails");
-
-            TopicReviewer topicReviewer = topicReviewerService.submitReview(topicReviewerId, decision, comment, totalScore, checklistDetails);
-            return ResponseEntity.ok(topicReviewer);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }

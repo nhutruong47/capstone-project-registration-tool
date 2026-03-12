@@ -26,12 +26,12 @@ public class TopicController {
     private final AIService aiService;
     private final org.example.backend.service.TopicReviewerService topicReviewerService;
 
-
     /**
      * Sinh viên tự nộp đề tài mới (không dùng file)
+     * Step 2
      */
-    @Operation(summary = "Sinh viên nộp ý tưởng đề tài mới", tags = {"3. Student"})
-    @PostMapping("/student-register")
+    @Operation(summary = "Sinh viên nộp ý tưởng đề tài mới", tags = { "3. Student" })
+    @PostMapping("")
     public ResponseEntity<?> createByStudent(@RequestBody Map<String, Object> request) {
         try {
             Long semesterId = Long.valueOf(request.get("semesterId").toString());
@@ -49,11 +49,11 @@ public class TopicController {
                     titleEn, titleVi, description, department,
                     studentGroupInfo, studentCount);
 
-            // Trigger AI comprehensive check (Compliance & Similarity)
+            // Trigger AI comprehensive check (Compliance & Similarity) - Step 3
             aiService.checkTopicAIAsync(topic.getId());
 
             return ResponseEntity.ok(Map.of(
-                    "message", "Topic submitted successfully by student. AI similarity check in progress.",
+                    "message", "Topic submitted successfully. AI similarity check in progress.",
                     "topic", topic));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -63,7 +63,7 @@ public class TopicController {
     /**
      * Nộp lại đề tài FAIL ở đợt 2
      */
-    @Operation(summary = "Nộp lại đề tài (đối với đợt 2 hoặc khi bị từ chối)", tags = {"3. Student"})
+    @Operation(summary = "Nộp lại đề tài (đối với đợt 2 hoặc khi bị từ chối)", tags = { "3. Student" })
     @PostMapping("/{parentTopicId}/resubmit")
     public ResponseEntity<?> resubmit(@PathVariable Long parentTopicId,
             @RequestBody Map<String, Object> request) {
@@ -90,11 +90,16 @@ public class TopicController {
 
     /**
      * Moderator chỉ định Reviewer 1 & 2
+     * Step 4
      */
-    @Operation(summary = "Moderator phân công Reviewer 1 & 2", tags = {"5. Moderator"})
-    @PutMapping("/{id}/assign-reviewers")
-    public ResponseEntity<?> assignReviewers(@PathVariable Long id, @RequestBody List<Long> reviewerIds) {
+    @Operation(summary = "Moderator phân công Reviewer 1 & 2", tags = { "5. Moderator" })
+    @PostMapping("/{id}/assign-reviewers")
+    public ResponseEntity<?> assignReviewers(@PathVariable Long id, @RequestBody Map<String, Long> request) {
         try {
+            List<Long> reviewerIds = List.of(
+                request.get("reviewer1Id"),
+                request.get("reviewer2Id")
+            );
             topicReviewerService.assignReviewers(id, reviewerIds);
             return ResponseEntity.ok(Map.of("message", "Reviewers assigned successfully"));
         } catch (Exception e) {
@@ -104,11 +109,13 @@ public class TopicController {
 
     /**
      * Moderator chỉ định Reviewer 3 khi kết quả mâu thuẫn
+     * Step 6
      */
-    @Operation(summary = "Moderator phân công Reviewer thứ 3 (Tie-breaker)", tags = {"5. Moderator"})
-    @PutMapping("/{id}/assign-third-reviewer")
-    public ResponseEntity<?> assignThirdReviewer(@PathVariable Long id, @RequestParam Long reviewerId) {
+    @Operation(summary = "Moderator phân công Reviewer thứ 3 (Tie-breaker)", tags = { "5. Moderator" })
+    @PostMapping("/{id}/assign-third-reviewer")
+    public ResponseEntity<?> assignThirdReviewer(@PathVariable Long id, @RequestBody Map<String, Long> request) {
         try {
+            Long reviewerId = request.get("thirdReviewerId");
             topicReviewerService.assignThirdReviewer(id, reviewerId);
             return ResponseEntity.ok(Map.of("message", "Third reviewer assigned successfully"));
         } catch (Exception e) {
@@ -118,11 +125,12 @@ public class TopicController {
 
     /**
      * Hoàn tất kết quả đề tài
-     * Request: { "supervisorId": 1 } (optional)
+     * Step 7
      */
-    @Operation(summary = "Moderator hoàn tất và chốt đề tài (Gán GVHD)", tags = {"5. Moderator"})
+    @Operation(summary = "Moderator hoàn tất và chốt đề tài (Gán GVHD)", tags = { "5. Moderator" })
     @PostMapping("/{id}/finalize")
-    public ResponseEntity<?> finalizeTopic(@PathVariable Long id, @RequestBody(required = false) Map<String, Long> request) {
+    public ResponseEntity<?> finalizeTopic(@PathVariable Long id,
+            @RequestBody(required = false) Map<String, Long> request) {
         try {
             Long supervisorId = (request != null) ? request.get("supervisorId") : null;
             Topic topic = topicService.finalizeTopic(id, supervisorId);
@@ -134,13 +142,13 @@ public class TopicController {
         }
     }
 
-    @Operation(summary = "Lấy tất cả đề tài (Tất cả vai trò)", tags = {"6. General"})
+    @Operation(summary = "Lấy tất cả đề tài (Tất cả vai trò)", tags = { "6. General" })
     @GetMapping
     public ResponseEntity<?> getAll() {
         return ResponseEntity.ok(topicService.findAll());
     }
 
-    @Operation(summary = "Lấy chi tiết đề tài theo ID", tags = {"6. General"})
+    @Operation(summary = "Lấy chi tiết đề tài theo ID", tags = { "6. General" })
     @GetMapping("/{id}")
     public ResponseEntity<?> getById(@PathVariable Long id) {
         return topicService.findById(id)
@@ -148,7 +156,7 @@ public class TopicController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @Operation(summary = "Lấy đề tài theo mã số", tags = {"6. General"})
+    @Operation(summary = "Lấy đề tài theo mã số", tags = { "6. General" })
     @GetMapping("/code/{code}")
     public ResponseEntity<?> getByCode(@PathVariable String code) {
         return topicService.findByCode(code)
@@ -156,7 +164,7 @@ public class TopicController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @Operation(summary = "Lấy đề tài của một quản lý/giảng viên", tags = {"6. General"})
+    @Operation(summary = "Lấy đề tài của một quản lý/giảng viên", tags = { "6. General" })
     @GetMapping("/supervisor/{supervisorId}")
     public ResponseEntity<?> getBySupervisor(@PathVariable Long supervisorId) {
         return authService.findById(supervisorId)
@@ -164,7 +172,7 @@ public class TopicController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @Operation(summary = "Lấy đề tài theo học kỳ", tags = {"6. General"})
+    @Operation(summary = "Lấy đề tài theo học kỳ", tags = { "6. General" })
     @GetMapping("/semester/{semesterId}")
     public ResponseEntity<?> getBySemester(@PathVariable Long semesterId) {
         return semesterService.findById(semesterId)
@@ -172,7 +180,7 @@ public class TopicController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @Operation(summary = "Lấy danh sách đề tài đã đạt (PASSED) theo học kỳ", tags = {"6. General"})
+    @Operation(summary = "Lấy danh sách đề tài đã đạt (PASSED) theo học kỳ", tags = { "6. General" })
     @GetMapping("/semester/{semesterId}/passed")
     public ResponseEntity<?> getPassedTopics(@PathVariable Long semesterId) {
         return semesterService.findById(semesterId)
@@ -180,13 +188,13 @@ public class TopicController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @Operation(summary = "Lấy đề tài theo trạng thái", tags = {"6. General"})
+    @Operation(summary = "Lấy đề tài theo trạng thái", tags = { "6. General" })
     @GetMapping("/status/{status}")
     public ResponseEntity<List<Topic>> getByStatus(@PathVariable TopicStatus status) {
         return ResponseEntity.ok(topicService.findByStatus(status));
     }
 
-    @Operation(summary = "Lấy lịch sử kế thừa/nộp lại của đề tài", tags = {"6. General"})
+    @Operation(summary = "Lấy lịch sử kế thừa/nộp lại của đề tài", tags = { "6. General" })
     @GetMapping("/{id}/inheritance")
     public ResponseEntity<?> getInheritanceHistory(@PathVariable Long id) {
         try {
@@ -196,7 +204,7 @@ public class TopicController {
         }
     }
 
-    @Operation(summary = "Cập nhật thông tin đề tài", tags = {"3. Student"})
+    @Operation(summary = "Cập nhật thông tin đề tài", tags = { "3. Student" })
     @PutMapping("/{id}")
     public ResponseEntity<?> update(@PathVariable Long id, @RequestBody Map<String, Object> request) {
         try {
@@ -212,7 +220,7 @@ public class TopicController {
         }
     }
 
-    @Operation(summary = "Xóa đề tài", tags = {"2. Admin"})
+    @Operation(summary = "Xóa đề tài", tags = { "2. Admin" })
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id) {
         try {

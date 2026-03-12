@@ -147,6 +147,25 @@ public class TopicReviewerService {
         TopicReviewer topicReviewer = topicReviewerRepository.findById(topicReviewerId)
                 .orElseThrow(() -> new RuntimeException("TopicReviewer not found"));
 
+        return processReview(topicReviewer, decision, comment, totalScore, checklistDetails);
+    }
+
+    /**
+     * Nộp đánh giá dựa trên topicId và reviewerId (Khớp spec của user)
+     */
+    public TopicReviewer submitReviewByTopicAndReviewer(Long topicId, Long reviewerId, TopicStatus decision, String comment, Integer totalScore, String checklistDetails) {
+        Topic topic = topicRepository.findById(topicId)
+                .orElseThrow(() -> new RuntimeException("Topic not found"));
+        User reviewer = userRepository.findById(reviewerId)
+                .orElseThrow(() -> new RuntimeException("Reviewer not found"));
+
+        TopicReviewer topicReviewer = topicReviewerRepository.findByTopicAndReviewer(topic, reviewer)
+                .orElseThrow(() -> new RuntimeException("No review assignment found for this reviewer on this topic"));
+
+        return processReview(topicReviewer, decision, comment, totalScore, checklistDetails);
+    }
+
+    private TopicReviewer processReview(TopicReviewer topicReviewer, TopicStatus decision, String comment, Integer totalScore, String checklistDetails) {
         if (decision != TopicStatus.APPROVED && decision != TopicStatus.REJECTED) {
             throw new RuntimeException("Decision must be either APPROVED or REJECTED");
         }
