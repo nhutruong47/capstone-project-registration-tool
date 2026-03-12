@@ -2,12 +2,14 @@ package org.example.backend.config;
 
 import org.example.backend.entity.*;
 import org.example.backend.enums.PhaseStatus;
+import org.example.backend.enums.ReviewStatus;
 import org.example.backend.enums.TopicStatus;
 import org.example.backend.enums.UserRole;
 import org.example.backend.repository.*;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -19,7 +21,8 @@ public class DataInitializer {
         CommandLineRunner initDatabase(UserRepository userRepository,
                         SemesterRepository semesterRepository,
                         RegistrationPhaseRepository registrationPhaseRepository,
-                        TopicRepository topicRepository) {
+                        TopicRepository topicRepository,
+                        TopicReviewerRepository topicReviewerRepository) {
                 return args -> {
                         if (userRepository.count() > 0) {
                                 System.out.println("Database already initialized. Skipping seed data.");
@@ -136,21 +139,96 @@ public class DataInitializer {
                                         .submittedAt(LocalDateTime.now())
                                         .build());
 
-                        topicRepository.save(Topic.builder()
-                                        .code("FA25SE003")
-                                        .titleEn("E-Commerce Platform with AI Recommendations")
-                                        .titleVi("Nền tảng thương mại điện tử với gợi ý AI")
-                                        .description("Build a modern e-commerce platform with AI-powered product recommendations.")
-                                        .department("SE")
+                        topicRepository.save(topic3);
+
+                        // 6. Topics for the new 7-Step Flow
+                        // Step 3: Waiting Moderator (Passed AI)
+                        Topic topic4 = Topic.builder()
+                                        .code("AI1FA25")
+                                        .titleEn("Blockchain for Supply Chain Transparency")
+                                        .titleVi("Ứng dụng Blockchain cho truy xuất nguồn gốc chuỗi cung ứng")
+                                        .description("Detailed description about a high-quality blockchain system for tracking goods.")
+                                        .department("IA")
                                         .studentCount(4)
-                                        .supervisor(lecturer2)
                                         .semester(semester)
-                                        .registrationPhase(phase1)
-                                        .status(TopicStatus.REJECTED)
-                                        .totalScore(-3)
-                                        .finalNote("R1 và R2 đồng ý: REJECTED")
+                                        .registrationPhase(phase2)
+                                        .status(TopicStatus.WAITING_MODERATOR)
+                                        .aiSimilarityScore(5.0)
+                                        .finalNote("AI Check Result: PASSED (Compliant & Unique)")
                                         .submittedAt(LocalDateTime.now())
-                                        .build());
+                                        .build();
+                        topicRepository.save(topic4);
+
+                        // Step 4/5: In Review (Assigned to R1 and R2)
+                        Topic topic5 = Topic.builder()
+                                        .code("SE2FA25")
+                                        .titleEn("Microservices with Spring Cloud and K8s")
+                                        .titleVi("Hệ thống Microservices với Spring Cloud và Kubernetes")
+                                        .description("Building a scalable microservices architecture.")
+                                        .department("SE")
+                                        .studentCount(3)
+                                        .semester(semester)
+                                        .registrationPhase(phase2)
+                                        .reviewer1(lecturer1)
+                                        .reviewer2(lecturer2)
+                                        .status(TopicStatus.IN_REVIEW)
+                                        .submittedAt(LocalDateTime.now())
+                                        .build();
+                        topicRepository.save(topic5);
+
+                        topicReviewerRepository.save(TopicReviewer.builder()
+                                        .topic(topic5).reviewer(lecturer1).reviewerOrder(1)
+                                        .reviewStatus(ReviewStatus.NOT_STARTED).build());
+                        topicReviewerRepository.save(TopicReviewer.builder()
+                                        .topic(topic5).reviewer(lecturer2).reviewerOrder(2)
+                                        .reviewStatus(ReviewStatus.NOT_STARTED).build());
+
+                        // Step 6: Need Third Reviewer (Disagreement: R1=Approved, R2=Rejected)
+                        Topic topic6 = Topic.builder()
+                                        .code("SE3FA25")
+                                        .titleEn("IoT Smart Home Security")
+                                        .titleVi("Bảo mật nhà thông minh IoT")
+                                        .description("Securing IoT devices in a smart home environment.")
+                                        .department("IA")
+                                        .studentCount(3)
+                                        .semester(semester)
+                                        .registrationPhase(phase2)
+                                        .reviewer1(lecturer3)
+                                        .reviewer2(lecturer4)
+                                        .status(TopicStatus.NEED_THIRD_REVIEWER)
+                                        .finalNote("Mâu thuẫn: R1=APPROVED, R2=REJECTED. Cần Reviewer thứ 3.")
+                                        .submittedAt(LocalDateTime.now())
+                                        .build();
+                        topicRepository.save(topic6);
+
+                        topicReviewerRepository.save(TopicReviewer.builder()
+                                        .topic(topic6).reviewer(lecturer3).reviewerOrder(1)
+                                        .decision(TopicStatus.APPROVED).totalScore(1)
+                                        .comment("Good idea.").reviewStatus(ReviewStatus.COMPLETED)
+                                        .reviewedAt(LocalDateTime.now()).build());
+
+                        topicReviewerRepository.save(TopicReviewer.builder()
+                                        .topic(topic6).reviewer(lecturer4).reviewerOrder(2)
+                                        .decision(TopicStatus.REJECTED).totalScore(0)
+                                        .comment("Description is too vague.").reviewStatus(ReviewStatus.COMPLETED)
+                                        .reviewedAt(LocalDateTime.now()).build());
+
+                        // Step 7: Finalized (Fully Approved)
+                        Topic topic7 = Topic.builder()
+                                        .code("SE4FA25")
+                                        .titleEn("Mobile App for Mental Health")
+                                        .titleVi("Ứng dụng di động hỗ trợ sức khỏe tinh thần")
+                                        .description("A mobile application providing mental health support.")
+                                        .department("SE")
+                                        .studentCount(3)
+                                        .semester(semester)
+                                        .registrationPhase(phase2)
+                                        .status(TopicStatus.FINALIZED)
+                                        .isLocked(true)
+                                        .finalNote("R1 và R2 đồng ý: APPROVED")
+                                        .submittedAt(LocalDateTime.now())
+                                        .build();
+                        topicRepository.save(topic7);
 
                         System.out.println("Database Initialized Successfully!");
                 };
