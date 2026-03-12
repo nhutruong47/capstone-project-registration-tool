@@ -211,23 +211,36 @@ public class TopicService {
         return topicRepository.save(topic);
     }
 
-    public Topic updateAISimilarity(Long topicId, Double similarityScore, String details) {
+    public Topic updateAIResults(Long topicId, boolean isCompliant, Double similarityScore, String details) {
         Topic topic = topicRepository.findById(topicId)
                 .orElseThrow(() -> new RuntimeException("Topic not found"));
+        
         topic.setAiSimilarityScore(similarityScore);
         topic.setAiSimilarityDetails(details);
         
-        // Nếu AI test pass (ví dụ score < 80.0) -> Auto ID & Status = WAITING_MODERATOR
-        if (similarityScore != null && similarityScore < 80.0) {
+        StringBuilder note = new StringBuilder();
+        if (topic.getFinalNote() != null) {
+            note.append(topic.getFinalNote()).append("\n");
+        }
+
+        // Nếu AI test pass: Cả chất lượng và trùng lắp đều OK
+        // Similarity < 80% và isCompliant = true
+        if (isCompliant && (similarityScore == null || similarityScore < 80.0)) {
             String newCode = generateAutoId(topic.getSemester(), topic.getDepartment());
             topic.setCode(newCode);
             topic.setStatus(TopicStatus.WAITING_MODERATOR);
-            topic.setFinalNote((topic.getFinalNote() != null ? topic.getFinalNote() + "\n" : "") + "AI Checked: Passed");
+            note.append("AI Check Result: PASSED (Compliant & Unique)");
         } else {
             topic.setStatus(TopicStatus.REJECTED);
-            topic.setFinalNote((topic.getFinalNote() != null ? topic.getFinalNote() + "\n" : "") + "AI Checked: Failed (High Similarity)");
+            if (!isCompliant) {
+                note.append("AI Check Result: FAILED (Low quality description)\n");
+            }
+            if (similarityScore != null && similarityScore >= 80.0) {
+                note.append("AI Check Result: FAILED (High similarity detected)\n");
+            }
         }
         
+        topic.setFinalNote(note.toString().trim());
         return topicRepository.save(topic);
     }
 

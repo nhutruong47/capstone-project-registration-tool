@@ -204,9 +204,12 @@ public class TopicReviewerService {
         if (r3 != null && r3.getReviewStatus() == ReviewStatus.COMPLETED) {
             // Kết quả R3 là quyết định cuối cùng
             TopicStatus finalStatus = r3.getDecision();
-            topic.setStatus(finalStatus);
+            topic.setStatus(finalStatus == TopicStatus.APPROVED ? TopicStatus.FINALIZED : TopicStatus.REJECTED);
             topic.setTotalScore(r3.getTotalScore());
             topic.setFinalNote("Quyết định bởi Reviewer thứ 3: " + r3.getReviewer().getFullName());
+            if (finalStatus == TopicStatus.APPROVED) {
+                topic.setIsLocked(true);
+            }
             topicRepository.save(topic);
 
             notifyResult(topic, finalStatus);
@@ -218,9 +221,14 @@ public class TopicReviewerService {
             // R1 == R2 → kết quả cuối
             TopicStatus finalStatus = r1.getDecision();
             int avgScore = (r1.getTotalScore() + r2.getTotalScore()) / 2;
-            topic.setStatus(finalStatus);
+            
+            // Nếu đồng thuận Approve -> Chuyển thẳng sang FINALIZED (Step 7)
+            topic.setStatus(finalStatus == TopicStatus.APPROVED ? TopicStatus.FINALIZED : TopicStatus.REJECTED);
             topic.setTotalScore(avgScore);
             topic.setFinalNote("R1 và R2 đồng ý: " + finalStatus);
+            if (finalStatus == TopicStatus.APPROVED) {
+                topic.setIsLocked(true);
+            }
             topicRepository.save(topic);
 
             notifyResult(topic, finalStatus);

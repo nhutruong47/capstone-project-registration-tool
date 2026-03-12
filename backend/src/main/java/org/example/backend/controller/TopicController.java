@@ -49,8 +49,8 @@ public class TopicController {
                     titleEn, titleVi, description, department,
                     studentGroupInfo, studentCount);
 
-            // Trigger AI similarity check
-            aiService.checkSimilarityAsync(topic.getId());
+            // Trigger AI comprehensive check (Compliance & Similarity)
+            aiService.checkTopicAIAsync(topic.getId());
 
             return ResponseEntity.ok(Map.of(
                     "message", "Topic submitted successfully by student. AI similarity check in progress.",
@@ -78,7 +78,7 @@ public class TopicController {
             Topic childTopic = topicService.resubmit(parentTopicId, newPhaseId, titleEn, titleVi,
                     description, department, studentGroupInfo);
 
-            aiService.checkSimilarityAsync(childTopic.getId());
+            aiService.checkTopicAIAsync(childTopic.getId());
 
             return ResponseEntity.ok(Map.of(
                     "message", "Topic resubmitted successfully",

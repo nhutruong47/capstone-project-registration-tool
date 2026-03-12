@@ -23,32 +23,58 @@ public class AIService {
     private final TopicRepository topicRepository;
 
     /**
-     * Kiểm tra trùng lặp đề tài bằng AI (async)
-     * Nếu độ tương đồng vượt ngưỡng 80% → cảnh báo giảng viên
+     * Kiểm tra nội dung đề tài bằng AI (async)
+     * Chạy đồng thời 2 bài test: Compliance (chất lượng) và Similarity (trùng lắp)
      */
     @Async
-    public CompletableFuture<Topic> checkSimilarityAsync(Long topicId) {
-        log.info("Starting AI similarity check for topic: {}", topicId);
+    public CompletableFuture<Topic> checkTopicAIAsync(Long topicId) {
+        log.info("Starting AI comprehensive check for topic: {}", topicId);
 
         try {
             Topic topic = topicService.findById(topicId)
                     .orElseThrow(() -> new RuntimeException("Topic not found"));
 
-            SimilarityResult result = performSimilarityCheck(topic);
+            // 1. Compliance Check (Kiểm tra chất lượng mô tả)
+            boolean isCompliant = performComplianceCheck(topic);
+            
+            // 2. Similarity Check (Kiểm tra trùng lắp)
+            SimilarityResult similarityResult = performSimilarityCheck(topic);
 
-            // Cập nhật kết quả AI
-            Topic updatedTopic = topicService.updateAISimilarity(
+            // Cập nhật kết quả tổng hợp
+            Topic updatedTopic = topicService.updateAIResults(
                     topicId,
-                    result.score(),
-                    result.details());
+                    isCompliant,
+                    similarityResult.score(),
+                    similarityResult.details());
 
-            log.info("AI similarity check completed for topic: {}. Score: {}", topicId, result.score());
+            log.info("AI check completed for topic: {}. Compliant: {}, Similarity: {}", 
+                    topicId, isCompliant, similarityResult.score());
             return CompletableFuture.completedFuture(updatedTopic);
 
         } catch (Exception e) {
-            log.error("AI similarity check failed for topic: {}", topicId, e);
-            throw new RuntimeException("AI similarity check failed", e);
+            log.error("AI check failed for topic: {}", topicId, e);
+            throw new RuntimeException("AI check failed", e);
         }
+    }
+
+    /**
+     * Kiểm tra chất lượng mô tả (Step 3: Compliance Check)
+     * Tiêu chí: Độ dài > 50 ký tự, không chứa từ khóa rác, nội dung nghiêm túc
+     */
+    private boolean performComplianceCheck(Topic topic) {
+        String desc = topic.getDescription();
+        if (desc == null || desc.trim().length() < 50) {
+            return false; // Quá ngắn
+        }
+        
+        String[] junkWords = {"test", "abc", "123", "placeholder", "nothing", "demo"};
+        for (String junk : junkWords) {
+            if (desc.toLowerCase().contains(junk)) {
+                return false; // Chứa từ khóa rác
+            }
+        }
+        
+        return true;
     }
 
     /**
