@@ -45,7 +45,6 @@ public class TopicReviewerController {
         }
     }
 
-
     /**
      * Moderator chỉ định Reviewer thứ 3 khi mâu thuẫn
      * Request: { "reviewerId": 5 }
@@ -66,8 +65,8 @@ public class TopicReviewerController {
     }
 
     /**
-     * Reviewer nộp đánh giá cho đề tài
-     * Request: { "comment": "...", "decision": "APPROVED" }
+     * Reviewer nộp đánh giá cho đề tài kèm Checklist
+     * Request: { "comment": "...", "decision": "APPROVED", "totalScore": 8, "checklistDetails": "{...}" }
      */
     @Operation(summary = "Reviewer nộp kết quả đánh giá", tags = {"4. Reviewer"})
     @PostMapping("/{topicReviewerId}/submit")
@@ -77,8 +76,10 @@ public class TopicReviewerController {
             String comment = (String) request.get("comment");
             String decisionStr = (String) request.get("decision");
             TopicStatus decision = TopicStatus.valueOf(decisionStr);
+            Integer totalScore = (Integer) request.get("totalScore");
+            String checklistDetails = (String) request.get("checklistDetails");
 
-            TopicReviewer topicReviewer = topicReviewerService.submitReview(topicReviewerId, decision, comment);
+            TopicReviewer topicReviewer = topicReviewerService.submitReview(topicReviewerId, decision, comment, totalScore, checklistDetails);
             return ResponseEntity.ok(topicReviewer);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -137,6 +138,7 @@ public class TopicReviewerController {
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
+
     /**
      * Lấy thống kê số lượt chấm của tất cả giảng viên trong một học kỳ
      */

@@ -92,8 +92,6 @@ public class TopicReviewerService {
         return topicReviewers;
     }
 
-
-
     /**
      * Moderator chỉ định Reviewer thứ 3 khi R1 và R2 mâu thuẫn
      */
@@ -120,14 +118,14 @@ public class TopicReviewerService {
             }
         }
 
-            TopicReviewer thirdReviewer = TopicReviewer.builder()
+        TopicReviewer thirdReviewer = TopicReviewer.builder()
                 .topic(topic)
                 .reviewer(reviewer)
                 .reviewerOrder(3)
                 .reviewStatus(ReviewStatus.NOT_STARTED)
                 .build();
         thirdReviewer = topicReviewerRepository.save(thirdReviewer);
-        
+
         topic.setReviewer3(reviewer);
         topic.setStatus(TopicStatus.IN_REVIEW); // Change back to IN_REVIEW from NEED_THIRD_REVIEWER
         topicRepository.save(topic);
@@ -143,15 +141,11 @@ public class TopicReviewerService {
     }
 
     /**
-     * Reviewer nộp đánh giá cho đề tài
+     * Reviewer nộp đánh giá cho đề tài kèm Checklist
      */
-    public TopicReviewer submitReview(Long topicReviewerId, TopicStatus decision, String comment) {
+    public TopicReviewer submitReview(Long topicReviewerId, TopicStatus decision, String comment, Integer totalScore, String checklistDetails) {
         TopicReviewer topicReviewer = topicReviewerRepository.findById(topicReviewerId)
                 .orElseThrow(() -> new RuntimeException("TopicReviewer not found"));
-
-        if (comment == null || comment.trim().isEmpty()) {
-            throw new RuntimeException("Comment is required");
-        }
 
         if (decision != TopicStatus.APPROVED && decision != TopicStatus.REJECTED) {
             throw new RuntimeException("Decision must be either APPROVED or REJECTED");
@@ -162,9 +156,10 @@ public class TopicReviewerService {
             throw new RuntimeException("Topic results are locked. Cannot submit review.");
         }
 
-        topicReviewer.setTotalScore(decision == TopicStatus.APPROVED ? 1 : 0);
+        topicReviewer.setTotalScore(totalScore);
         topicReviewer.setDecision(decision);
         topicReviewer.setComment(comment);
+        topicReviewer.setChecklistDetails(checklistDetails);
         topicReviewer.setReviewStatus(ReviewStatus.COMPLETED);
         topicReviewer.setReviewedAt(LocalDateTime.now());
 
@@ -185,9 +180,6 @@ public class TopicReviewerService {
      */
     private void evaluateTopicStatus(Topic topic) {
         List<TopicReviewer> allReviewers = topicReviewerRepository.findByTopic(topic);
-        List<TopicReviewer> completedReviewers = allReviewers.stream()
-                .filter(tr -> tr.getReviewStatus() == ReviewStatus.COMPLETED)
-                .toList();
 
         // Tìm R1, R2, R3
         TopicReviewer r1 = allReviewers.stream().filter(tr -> tr.getReviewerOrder() == 1).findFirst().orElse(null);
@@ -220,8 +212,10 @@ public class TopicReviewerService {
         if (r1.getDecision() == r2.getDecision()) {
             // R1 == R2 → kết quả cuối
             TopicStatus finalStatus = r1.getDecision();
-            int avgScore = (r1.getTotalScore() + r2.getTotalScore()) / 2;
-            
+            int scoreR1 = r1.getTotalScore() != null ? r1.getTotalScore() : 0;
+            int scoreR2 = r2.getTotalScore() != null ? r2.getTotalScore() : 0;
+            int avgScore = (scoreR1 + scoreR2) / 2;
+
             // Nếu đồng thuận Approve -> Chuyển thẳng sang FINALIZED (Step 7)
             topic.setStatus(finalStatus == TopicStatus.APPROVED ? TopicStatus.FINALIZED : TopicStatus.REJECTED);
             topic.setTotalScore(avgScore);
@@ -239,12 +233,8 @@ public class TopicReviewerService {
                     ". Cần Reviewer thứ 3.");
             topicRepository.save(topic);
 
-            // Thông báo cho hệ thống hoặc admin (sinh viên không có supervisor)
-            User notifyTarget = topic.getSupervisor();
-            if (notifyTarget == null) {
-                // If supervisor is not set yet, notify the Moderator or Reviewers
-                // Simplified for now: skip if null, or notify reviewer 1 and 2
-            } else {
+            // Thông báo
+            if (topic.getSupervisor() != null) {
                 notificationService.create(topic.getSupervisor(),
                         "Đề tài cần Reviewer thứ 3",
                         "Đề tài " + topic.getCode() + " có kết quả mâu thuẫn giữa 2 reviewer. " +
@@ -287,6 +277,7 @@ public class TopicReviewerService {
     public List<Topic> findTopicsNeedingThirdReviewer() {
         return topicRepository.findByStatus(TopicStatus.NEED_THIRD_REVIEWER);
     }
+
     /**
      * Lấy thống kê số lượt chấm của tất cả giảng viên trong một học kỳ
      */

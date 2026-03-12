@@ -41,6 +41,9 @@ public class TopicReviewer {
     private TopicStatus decision; // PASS / FAIL / CONSIDER
 
     @Column(columnDefinition = "TEXT")
+    private String checklistDetails; // Dữ liệu chi tiết checklist (JSON)
+
+    @Column(columnDefinition = "TEXT")
     private String comment; // Nhận xét tổng kết
 
     @Enumerated(EnumType.STRING)
