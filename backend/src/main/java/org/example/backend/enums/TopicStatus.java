@@ -7,5 +7,6 @@ public enum TopicStatus {
     NEED_THIRD_REVIEWER, // Lệch ý kiến, chờ Moderator gán Giám khảo 3
     APPROVED,            // Mức độ duyệt thành công sau review
     REJECTED,            // Đề tài bị từ chối/Bắt sửa lại
-    FINALIZED            // Hoàn tất (Sẵn sàng thực hiện/phân công GVHD)
+    FINALIZED,           // Hoàn tất (Sẵn sàng thực hiện/phân công GVHD)
+    PASS                 // Legacy status for compatibility
 }
