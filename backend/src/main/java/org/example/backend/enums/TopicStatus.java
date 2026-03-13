@@ -8,5 +8,6 @@ public enum TopicStatus {
     APPROVED,            // Mức độ duyệt thành công sau review
     REJECTED,            // Đề tài bị từ chối/Bắt sửa lại
     FINALIZED,           // Hoàn tất (Sẵn sàng thực hiện/phân công GVHD)
-    PASS                 // Legacy status for compatibility
+    PASS,                // Legacy status for compatibility
+    FAIL                 // Legacy status for compatibility (found in DB)
 }

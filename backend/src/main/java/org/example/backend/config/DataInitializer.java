@@ -25,7 +25,7 @@ public class DataInitializer {
             TopicReviewerRepository topicReviewerRepository,
             JdbcTemplate jdbcTemplate) {
         return args -> {
-            // Force drop NOT NULL constraints for PostgreSQL (Render)
+            // 1. Force drop NOT NULL constraints for PostgreSQL (Render)
             try {
                 System.out.println("Forcing database column nullability update...");
                 jdbcTemplate.execute("ALTER TABLE topics ALTER COLUMN supervisor_id DROP NOT NULL");
@@ -35,7 +35,6 @@ public class DataInitializer {
                 System.out.println("Database column nullability update successful.");
             } catch (Exception e) {
                 System.out.println("Schema update via SQL failed (might be SQL Server or already updated): " + e.getMessage());
-                // If it fails, we try SQL Server syntax just in case
                 try {
                     jdbcTemplate.execute("ALTER TABLE topics ALTER COLUMN supervisor_id BIGINT NULL");
                     jdbcTemplate.execute("ALTER TABLE topics ALTER COLUMN reviewer1_id BIGINT NULL");
@@ -43,8 +42,18 @@ public class DataInitializer {
                     jdbcTemplate.execute("ALTER TABLE topics ALTER COLUMN reviewer3_id BIGINT NULL");
                     System.out.println("Database column nullability update successful (SQL Server syntax).");
                 } catch (Exception e2) {
-                    System.out.println("SQL Server schema update also failed: " + e2.getMessage());
+                    System.out.println("SQL Server schema update also failed.");
                 }
+            }
+
+            // 2. Migrate legacy statuses to new ones
+            try {
+                System.out.println("Migrating legacy statuses (PASS -> APPROVED, FAIL -> REJECTED)...");
+                jdbcTemplate.execute("UPDATE topics SET status = 'APPROVED' WHERE status = 'PASS'");
+                jdbcTemplate.execute("UPDATE topics SET status = 'REJECTED' WHERE status = 'FAIL'");
+                System.out.println("Legacy status migration successful.");
+            } catch (Exception e) {
+                System.out.println("Legacy status migration failed: " + e.getMessage());
             }
 
             if (userRepository.count() > 0) {
@@ -54,7 +63,7 @@ public class DataInitializer {
 
             System.out.println("Initializing Database with Seed Data...");
 
-            // 1. Semester
+            // Seed logic below...
             Semester semester = Semester.builder()
                     .code("FA25")
                     .name("Fall 2025")
@@ -64,7 +73,6 @@ public class DataInitializer {
                     .build();
             semesterRepository.save(semester);
 
-            // 2. Registration Phases
             RegistrationPhase phase1 = RegistrationPhase.builder()
                     .name("Đợt 1")
                     .startDate(LocalDateTime.of(2025, 9, 1, 0, 0))
@@ -83,7 +91,6 @@ public class DataInitializer {
                     .build();
             registrationPhaseRepository.save(phase2);
 
-            // 3. Users
             userRepository.save(User.builder()
                     .email("admin@fpt.edu.vn").password("12345")
                     .fullName("System Administrator").role(UserRole.ADMIN)
@@ -129,7 +136,6 @@ public class DataInitializer {
                     .fullName("Duong Hoang Long").role(UserRole.STUDENT)
                     .studentCode("SE17002").build());
 
-            // 5. Sample Topics
             topicRepository.save(Topic.builder()
                     .code("FA25SE001")
                     .titleEn("Smart Capstone Project Management System")
@@ -161,8 +167,6 @@ public class DataInitializer {
                     .submittedAt(LocalDateTime.now())
                     .build());
 
-            // 6. Topics for the new 7-Step Flow
-            // Step 3: Waiting Moderator (Passed AI)
             Topic topic4 = Topic.builder()
                     .code("AI1FA25")
                     .titleEn("Blockchain for Supply Chain Transparency")
@@ -179,7 +183,6 @@ public class DataInitializer {
                     .build();
             topicRepository.save(topic4);
 
-            // Step 4/5: In Review (Assigned to R1 and R2)
             Topic topic5 = Topic.builder()
                     .code("SE2FA25")
                     .titleEn("Microservices with Spring Cloud and K8s")
@@ -203,7 +206,6 @@ public class DataInitializer {
                     .topic(topic5).reviewer(lecturer2).reviewerOrder(2)
                     .reviewStatus(ReviewStatus.NOT_STARTED).build());
 
-            // Step 6: Need Third Reviewer (Disagreement: R1=Approved, R2=Rejected)
             Topic topic6 = Topic.builder()
                     .code("SE3FA25")
                     .titleEn("IoT Smart Home Security")
@@ -233,7 +235,6 @@ public class DataInitializer {
                     .comment("Description is too vague.").reviewStatus(ReviewStatus.COMPLETED)
                     .reviewedAt(LocalDateTime.now()).build());
 
-            // Step 7: Finalized (Fully Approved)
             Topic topic7 = Topic.builder()
                     .code("SE4FA25")
                     .titleEn("Mobile App for Mental Health")
