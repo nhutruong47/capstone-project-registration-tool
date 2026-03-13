@@ -63,26 +63,27 @@ public class Topic {
     // === Quan hệ ===
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reviewer1_id")
+    @JoinColumn(name = "reviewer1_id", nullable = true)
     @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private User reviewer1;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reviewer2_id")
+    @JoinColumn(name = "reviewer2_id", nullable = true)
     @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private User reviewer2;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reviewer3_id")
+    @JoinColumn(name = "reviewer3_id", nullable = true)
     @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private User reviewer3;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "supervisor_id")
+    @JoinColumn(name = "supervisor_id", nullable = true)
     @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private User supervisor; // GVHD chính (có thể chưa có nếu sinh viên tự đề xuất)
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "supervisor2_id")
+    @JoinColumn(name = "supervisor2_id", nullable = true)
     @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private User supervisor2; // GVHD phụ (nếu có)
 
@@ -97,7 +98,7 @@ public class Topic {
     private RegistrationPhase registrationPhase;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "parent_topic_id")
+    @JoinColumn(name = "parent_topic_id", nullable = true)
     @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private Topic parentTopic; // Đề tài cha (nếu nộp lại đợt 2)
 
