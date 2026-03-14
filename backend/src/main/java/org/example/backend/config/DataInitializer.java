@@ -25,6 +25,16 @@ public class DataInitializer {
             TopicReviewerRepository topicReviewerRepository,
             JdbcTemplate jdbcTemplate) {
         return args -> {
+            // 0. Drop enum constraints that might block new status values (APPROVED, REJECTED, etc.)
+            try {
+                System.out.println("Dropping old enum check constraints...");
+                jdbcTemplate.execute("ALTER TABLE topic_reviewers DROP CONSTRAINT IF EXISTS topic_reviewers_decision_check");
+                jdbcTemplate.execute("ALTER TABLE topics DROP CONSTRAINT IF EXISTS topics_status_check");
+                System.out.println("Constraints dropped successfully.");
+            } catch (Exception e) {
+                System.out.println("Failed to drop constraints (might not exist or different DB): " + e.getMessage());
+            }
+
             // 1. Force drop NOT NULL constraints for PostgreSQL (Render)
             try {
                 System.out.println("Forcing database column nullability update...");
