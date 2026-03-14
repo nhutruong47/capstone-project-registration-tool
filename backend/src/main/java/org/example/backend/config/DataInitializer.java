@@ -148,7 +148,7 @@ public class DataInitializer {
                     .semester(semester)
                     .registrationPhase(phase1)
                     .status(TopicStatus.APPROVED)
-                    .totalScore(7)
+                    .totalScore(7.0)
                     .finalNote("R1 và R2 đồng ý: APPROVED")
                     .submittedAt(LocalDateTime.now())
                     .build());
@@ -225,13 +225,13 @@ public class DataInitializer {
 
             topicReviewerRepository.save(TopicReviewer.builder()
                     .topic(topic6).reviewer(lecturer3).reviewerOrder(1)
-                    .decision(TopicStatus.APPROVED).totalScore(1)
+                    .decision(TopicStatus.APPROVED).totalScore(1.0)
                     .comment("Good idea.").reviewStatus(ReviewStatus.COMPLETED)
                     .reviewedAt(LocalDateTime.now()).build());
 
             topicReviewerRepository.save(TopicReviewer.builder()
                     .topic(topic6).reviewer(lecturer4).reviewerOrder(2)
-                    .decision(TopicStatus.REJECTED).totalScore(0)
+                    .decision(TopicStatus.REJECTED).totalScore(0.0)
                     .comment("Description is too vague.").reviewStatus(ReviewStatus.COMPLETED)
                     .reviewedAt(LocalDateTime.now()).build());
 
