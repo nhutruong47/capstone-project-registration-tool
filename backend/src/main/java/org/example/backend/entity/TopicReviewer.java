@@ -34,7 +34,7 @@ public class TopicReviewer {
     @Builder.Default
     private Integer reviewerOrder = 1; // 1 = Reviewer 1, 2 = Reviewer 2, 3 = Reviewer thứ 3
 
-    private Integer totalScore; // Tổng điểm từ checklist
+    private Double totalScore; // Tổng điểm từ checklist
 
     // Kết quả quyết định của reviewer dựa trên totalScore
     @Enumerated(EnumType.STRING)

@@ -37,7 +37,7 @@ public class TopicReviewerController {
             String decisionStr = (String) request.get("decision");
             TopicStatus decision = TopicStatus.valueOf(decisionStr);
             Object totalScoreObj = request.get("totalScore");
-            Integer totalScore = totalScoreObj != null ? Integer.valueOf(totalScoreObj.toString()) : 0;
+            Double totalScore = totalScoreObj != null ? Double.valueOf(totalScoreObj.toString()) : 0.0;
             
             // checklistDetails có thể là String hoặc Map (nếu là Map thì convert sang JSON string)
             Object checklistObj = request.get("checklistDetails");
@@ -64,7 +64,7 @@ public class TopicReviewerController {
             String decisionStr = (String) request.get("decision");
             TopicStatus decision = TopicStatus.valueOf(decisionStr);
             Object totalScoreObj = request.get("totalScore");
-            Integer totalScore = totalScoreObj != null ? Integer.valueOf(totalScoreObj.toString()) : 0;
+            Double totalScore = totalScoreObj != null ? Double.valueOf(totalScoreObj.toString()) : 0.0;
             String checklistDetails = request.get("checklistDetails") != null ? request.get("checklistDetails").toString() : "";
 
             TopicReviewer topicReviewer = topicReviewerService.submitReview(topicReviewerId, decision, comment, totalScore, checklistDetails);

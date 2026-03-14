@@ -143,7 +143,7 @@ public class TopicReviewerService {
     /**
      * Reviewer nộp đánh giá cho đề tài kèm Checklist
      */
-    public TopicReviewer submitReview(Long topicReviewerId, TopicStatus decision, String comment, Integer totalScore, String checklistDetails) {
+    public TopicReviewer submitReview(Long topicReviewerId, TopicStatus decision, String comment, Double totalScore, String checklistDetails) {
         TopicReviewer topicReviewer = topicReviewerRepository.findById(topicReviewerId)
                 .orElseThrow(() -> new RuntimeException("TopicReviewer not found"));
 
@@ -153,7 +153,7 @@ public class TopicReviewerService {
     /**
      * Nộp đánh giá dựa trên topicId và reviewerId (Khớp spec của user)
      */
-    public TopicReviewer submitReviewByTopicAndReviewer(Long topicId, Long reviewerId, TopicStatus decision, String comment, Integer totalScore, String checklistDetails) {
+    public TopicReviewer submitReviewByTopicAndReviewer(Long topicId, Long reviewerId, TopicStatus decision, String comment, Double totalScore, String checklistDetails) {
         Topic topic = topicRepository.findById(topicId)
                 .orElseThrow(() -> new RuntimeException("Topic not found"));
         User reviewer = userRepository.findById(reviewerId)
@@ -165,7 +165,7 @@ public class TopicReviewerService {
         return processReview(topicReviewer, decision, comment, totalScore, checklistDetails);
     }
 
-    private TopicReviewer processReview(TopicReviewer topicReviewer, TopicStatus decision, String comment, Integer totalScore, String checklistDetails) {
+    private TopicReviewer processReview(TopicReviewer topicReviewer, TopicStatus decision, String comment, Double totalScore, String checklistDetails) {
         if (decision != TopicStatus.APPROVED && decision != TopicStatus.REJECTED) {
             throw new RuntimeException("Decision must be either APPROVED or REJECTED");
         }
@@ -231,9 +231,9 @@ public class TopicReviewerService {
         if (r1.getDecision() == r2.getDecision()) {
             // R1 == R2 → kết quả cuối
             TopicStatus finalStatus = r1.getDecision();
-            int scoreR1 = r1.getTotalScore() != null ? r1.getTotalScore() : 0;
-            int scoreR2 = r2.getTotalScore() != null ? r2.getTotalScore() : 0;
-            int avgScore = (scoreR1 + scoreR2) / 2;
+            Double scoreR1 = r1.getTotalScore() != null ? r1.getTotalScore() : 0.0;
+            Double scoreR2 = r2.getTotalScore() != null ? r2.getTotalScore() : 0.0;
+            Double avgScore = (scoreR1 + scoreR2) / 2.0;
 
             // Nếu đồng thuận Approve -> Chuyển thẳng sang FINALIZED (Step 7)
             topic.setStatus(finalStatus == TopicStatus.APPROVED ? TopicStatus.FINALIZED : TopicStatus.REJECTED);

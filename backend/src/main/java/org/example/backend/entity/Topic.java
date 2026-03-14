@@ -42,7 +42,7 @@ public class Topic {
     @Builder.Default
     private TopicStatus status = TopicStatus.PENDING;
 
-    private Integer totalScore; // Điểm tổng cuối cùng (Final Score)
+    private Double totalScore; // Điểm tổng cuối cùng (Final Score)
 
     @Column(columnDefinition = "TEXT")
     private String finalNote; // Ghi chú cuối cùng
