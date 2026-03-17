@@ -98,6 +98,11 @@ public class Topic {
     private RegistrationPhase registrationPhase;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "submitter_id", nullable = true)
+    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
+    private User submitter; // Sinh viên nộp đề tài
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_topic_id", nullable = true)
     @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private Topic parentTopic; // Đề tài cha (nếu nộp lại đợt 2)

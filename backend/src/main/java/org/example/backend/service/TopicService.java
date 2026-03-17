@@ -54,13 +54,19 @@ public class TopicService {
      */
     public Topic createByStudent(Long semesterId, Long registrationPhaseId,
             String titleEn, String titleVi, String description, String department,
-            String studentGroupInfo, Integer studentCount) {
+            String studentGroupInfo, Integer studentCount, Long submitterId) {
 
         Semester semester = semesterRepository.findById(semesterId)
                 .orElseThrow(() -> new RuntimeException("Semester not found"));
 
         RegistrationPhase phase = registrationPhaseRepository.findById(registrationPhaseId)
                 .orElseThrow(() -> new RuntimeException("Registration phase not found"));
+
+        User submitter = null;
+        if (submitterId != null) {
+            submitter = userRepository.findById(submitterId)
+                    .orElseThrow(() -> new RuntimeException("Submitter not found"));
+        }
 
         // Tạm thời để code rỗng hoặc code nháp, mã chính thức sẽ được cấp sau khi qua AI
         Topic.TopicBuilder builder = Topic.builder()
@@ -72,6 +78,7 @@ public class TopicService {
                 .studentGroupInfo(studentGroupInfo)
                 .studentCount(studentCount)
                 .supervisor(null) // Chưa có giảng viên hướng dẫn chính thức
+                .submitter(submitter) // Lưu người nộp đề tài
                 .semester(semester)
                 .registrationPhase(phase)
                 .status(TopicStatus.PENDING)

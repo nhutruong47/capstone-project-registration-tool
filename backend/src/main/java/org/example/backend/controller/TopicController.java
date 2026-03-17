@@ -44,10 +44,13 @@ public class TopicController {
             Integer studentCount = request.get("studentCount") != null
                     ? Integer.valueOf(request.get("studentCount").toString())
                     : null;
+            Long submitterId = request.get("submitterId") != null
+                    ? Long.valueOf(request.get("submitterId").toString())
+                    : null;
 
             Topic topic = topicService.createByStudent(semesterId, registrationPhaseId,
                     titleEn, titleVi, description, department,
-                    studentGroupInfo, studentCount);
+                    studentGroupInfo, studentCount, submitterId);
 
             // Trigger AI comprehensive check (Compliance & Similarity) - Step 3
             aiService.checkTopicAIAsync(topic.getId());
