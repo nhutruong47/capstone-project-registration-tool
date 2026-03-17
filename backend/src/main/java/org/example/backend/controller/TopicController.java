@@ -183,6 +183,16 @@ public class TopicController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @Operation(summary = "Lấy danh sách đề tài sinh viên đã nộp (dựa trên submitterId)", tags = { "3. Student", "6. General" })
+    @GetMapping("/submitter/{submitterId}")
+    public ResponseEntity<?> getBySubmitter(@PathVariable Long submitterId) {
+        try {
+            return ResponseEntity.ok(topicService.findBySubmitter(submitterId));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @Operation(summary = "Lấy danh sách đề tài đã đạt (PASSED) theo học kỳ", tags = { "6. General" })
     @GetMapping("/semester/{semesterId}/passed")
     public ResponseEntity<?> getPassedTopics(@PathVariable Long semesterId) {

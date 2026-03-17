@@ -186,6 +186,12 @@ public class TopicService {
         return topicRepository.findByRegistrationPhase(phase);
     }
 
+    public List<Topic> findBySubmitter(Long submitterId) {
+        User submitter = userRepository.findById(submitterId)
+                .orElseThrow(() -> new RuntimeException("Submitter not found"));
+        return topicRepository.findBySubmitter(submitter);
+    }
+
     public List<Topic> findPassedTopicsBySemester(Semester semester) {
         return topicRepository.findPassedTopicsBySemester(semester);
     }
