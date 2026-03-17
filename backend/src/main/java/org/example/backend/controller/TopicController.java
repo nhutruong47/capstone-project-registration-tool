@@ -25,7 +25,6 @@ public class TopicController {
     private final SemesterService semesterService;
     private final AIService aiService;
     private final org.example.backend.service.TopicReviewerService topicReviewerService;
-    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     /**
      * Sinh viên tự nộp đề tài mới (không dùng file)
@@ -188,16 +187,9 @@ public class TopicController {
     @GetMapping("/submitter/{submitterId}")
     public ResponseEntity<?> getBySubmitter(@PathVariable Long submitterId) {
         try {
-            List<Topic> topics = topicService.findBySubmitter(submitterId);
-            String json = objectMapper.writeValueAsString(topics);
-            return ResponseEntity.ok()
-                    .header("Content-Type", "application/json")
-                    .body(json);
+            return ResponseEntity.ok(topicService.findBySubmitter(submitterId));
         } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.badRequest().body(Map.of(
-                    "error", "Serialization Error",
-                    "message", e.getMessage() != null ? e.getMessage() : e.toString()));
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 

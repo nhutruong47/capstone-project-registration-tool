@@ -34,6 +34,8 @@ public interface TopicRepository extends JpaRepository<Topic, Long> {
 
     List<Topic> findByRegistrationPhase(RegistrationPhase registrationPhase);
 
+    List<Topic> findBySubmitter(User submitter);
+
     @Query("SELECT COUNT(t) FROM Topic t WHERE t.semester = :semester AND t.code LIKE :prefix%")
     Long countByCodePrefix(@Param("semester") Semester semester, @Param("prefix") String prefix);
 
