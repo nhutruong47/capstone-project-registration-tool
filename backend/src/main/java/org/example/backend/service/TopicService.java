@@ -241,7 +241,7 @@ public class TopicService {
         if (isCompliant && (similarityScore == null || similarityScore < 80.0)) {
             String newCode = generateAutoId(topic.getSemester(), topic.getDepartment());
             topic.setCode(newCode);
-            topic.setStatus(TopicStatus.WAITING_MODERATOR);
+            topic.setStatus(TopicStatus.PENDING); // Giữ nguyên PENDING theo yêu cầu
             note.append("AI Check Result: PASSED (Compliant & Unique)");
         } else {
             topic.setStatus(TopicStatus.REJECTED);
