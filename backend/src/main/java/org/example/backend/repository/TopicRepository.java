@@ -37,6 +37,6 @@ public interface TopicRepository extends JpaRepository<Topic, Long> {
     @Query("SELECT COUNT(t) FROM Topic t WHERE t.semester = :semester AND t.code LIKE :prefix%")
     Long countByCodePrefix(@Param("semester") Semester semester, @Param("prefix") String prefix);
 
-    @Query("SELECT t FROM Topic t WHERE t.status = 'APPROVED' AND t.semester = :semester")
+    @Query("SELECT t FROM Topic t WHERE t.status = org.example.backend.enums.TopicStatus.APPROVED AND t.semester = :semester")
     List<Topic> findPassedTopicsBySemester(@Param("semester") Semester semester);
 }
